@@ -1,5 +1,6 @@
 package com.bik.flower_shop.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.bik.flower_shop.mapper.ImageMapper;
 import com.bik.flower_shop.pojo.entity.Image;
 import com.qcloud.cos.COSClient;
@@ -111,7 +112,28 @@ public class ImageService {
         if (ids == null || ids.isEmpty()) {
             return false;
         }
-        return this.removeBatchByIds(ids); // MyBatis-Plus 提供的方法
+
+        // 查询图片路径
+        List<Image> images = imageMapper.selectList(new QueryWrapper<Image>().in("id", ids));
+
+        // 删除腾讯 COS 上的文件
+        COSCredentials cred = new BasicCOSCredentials(tencentSecretId, tencentSecretKey);
+        ClientConfig clientConfig = new ClientConfig(new Region(tencentRegion));
+        COSClient cosClient = new COSClient(cred, clientConfig);
+
+        try {
+            for (Image image : images) {
+                String objectName = image.getPath(); // 假设 path 存储的是上传的相对路径
+                if (objectName != null && !objectName.isEmpty()) {
+                    cosClient.deleteObject(tencentBucketName, objectName);
+                }
+            }
+        } finally {
+            cosClient.shutdown();
+        }
+
+        // 删除数据库记录
+        return imageMapper.delete(new QueryWrapper<Image>().in("id", ids)) > 0;
     }
 
 }
