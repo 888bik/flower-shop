@@ -7,7 +7,6 @@ import com.bik.flower_shop.pojo.dto.UpdatePasswordDTO;
 import com.bik.flower_shop.pojo.entity.Manager;
 import com.bik.flower_shop.service.ManagerService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.MediaType;
 

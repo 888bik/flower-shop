@@ -3,19 +3,18 @@ package com.bik.flower_shop.controller.admin;
 import com.bik.flower_shop.pojo.entity.Notice;
 import com.bik.flower_shop.service.NoticeService;
 import com.bik.flower_shop.common.ApiResult;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/admin/notice")
 public class NoticeController {
 
     private final NoticeService noticeService;
 
-    public NoticeController(NoticeService noticeService) {
-        this.noticeService = noticeService;
-    }
 
     /**
      * 添加公告
@@ -38,16 +37,16 @@ public class NoticeController {
 
     // 修改公告
     @PostMapping("/{id}")
-    public ApiResult<Boolean> update(@PathVariable Integer id,
-                                     @RequestParam String title,
-                                     @RequestParam String content) {
+    public ApiResult<Boolean> updateNotice(@PathVariable Integer id,
+                                           @RequestParam String title,
+                                           @RequestParam String content) {
         boolean success = noticeService.updateNotice(id, title, content);
         return ApiResult.ok(success);
     }
 
     // 删除公告
     @PostMapping("/{id}/delete")
-    public ApiResult<Boolean> delete(@PathVariable Integer id) {
+    public ApiResult<Boolean> deleteNotice(@PathVariable Integer id) {
         boolean success = noticeService.deleteNotice(id);
         return ApiResult.ok(success);
     }

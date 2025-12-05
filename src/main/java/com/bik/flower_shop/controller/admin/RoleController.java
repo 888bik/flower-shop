@@ -1,39 +1,73 @@
 package com.bik.flower_shop.controller.admin;
 
 import com.bik.flower_shop.common.ApiResult;
+import com.bik.flower_shop.pojo.dto.RoleDTO;
+import com.bik.flower_shop.pojo.dto.SetRoleRulesDTO;
+import com.bik.flower_shop.pojo.entity.Role;
+import com.bik.flower_shop.service.RoleService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
+/**
+ * @author bik
+ */
 @RestController
-@RequestMapping("/admin")
+@RequiredArgsConstructor
+@RequestMapping("/admin/role")
 public class RoleController {
 
-    @PostMapping("/role/{id}/delete")
-    public ApiResult<?> deleteRole(@PathVariable Long id) {
-        return ApiResult.ok();
+    private final RoleService roleService;
+
+    @PostMapping
+    public ApiResult<Role> createRole(@RequestHeader("token") String token, @RequestBody RoleDTO dto) {
+        Role role = roleService.createRole(dto);
+        return ApiResult.ok(role);
     }
 
-    @GetMapping("/role/{page}")
-    public ApiResult<?> listRole(@PathVariable int page) {
-        return ApiResult.ok();
+    @PostMapping("{id}")
+    public ApiResult<Boolean> updateRole(
+            @RequestHeader("token") String token,
+            @PathVariable Integer id,
+            @RequestBody RoleDTO dto
+    ) {
+        boolean success = roleService.updateRole(id, dto);
+        return ApiResult.ok(success);
+
     }
 
-    @PostMapping("/role")
-    public ApiResult<?> createRole(@RequestBody Object body) {
-        return ApiResult.ok();
+
+    @GetMapping("{page}")
+    public ApiResult<?> getRoleList(@PathVariable Integer page,
+                                    @RequestParam(defaultValue = "10") Integer limit) {
+        return ApiResult.ok(roleService.getRoleList(page, limit));
     }
 
-    @PostMapping("/role/set_rules")
-    public ApiResult<?> setRoleRules(@RequestParam Long roleId, @RequestBody Object rules) {
-        return ApiResult.ok();
+    @PostMapping("/{id}/delete")
+    public Object deleteRole(@PathVariable Integer id) {
+        boolean success = roleService.deleteRole(id);
+        return ApiResult.ok(success);
     }
 
-    @PostMapping("/role/{id}")
-    public ApiResult<?> updateRole(@PathVariable Long id, @RequestBody Object body) {
-        return ApiResult.ok();
+    @PostMapping("/{id}/update_status")
+    public ApiResult<Boolean> updateStatus(
+            @RequestHeader("token") String token,
+            @PathVariable Integer id,
+            @RequestParam Byte status
+    ) {
+        boolean success = roleService.updateStatus(id, status);
+        return ApiResult.ok(success);
     }
 
-    @PostMapping("/role/{id}/update_status")
-    public ApiResult<?> updateRoleStatus(@PathVariable Long id) {
-        return ApiResult.ok();
+    @PostMapping("/set_rules")
+    public ApiResult<Boolean> setRules(
+            @RequestHeader("token") String token,
+            @RequestBody SetRoleRulesDTO dto
+    ) {
+        boolean success = roleService.setRoleRules(dto.getId(), dto.getRuleIds());
+        return ApiResult.ok(success);
     }
+
+
 }

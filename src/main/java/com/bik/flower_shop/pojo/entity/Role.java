@@ -31,7 +31,7 @@ public class Role implements Serializable {
      * 状态：0禁用1启用
      */
     @TableField("status")
-    private Boolean status;
+    private Byte status;
 
     @TableField("create_time")
     private Integer createTime;
@@ -50,4 +50,9 @@ public class Role implements Serializable {
      */
     @TableField(value = "`desc`")
     private String description;
+
+
+    @TableField(exist = false)
+    private Integer pivotId;
+
 }

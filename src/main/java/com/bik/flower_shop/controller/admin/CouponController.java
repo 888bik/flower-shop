@@ -4,20 +4,18 @@ import com.bik.flower_shop.pojo.dto.CouponDTO;
 import com.bik.flower_shop.pojo.entity.Coupon;
 import com.bik.flower_shop.service.CouponService;
 import com.bik.flower_shop.common.ApiResult;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.Map;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/admin/coupon")
 public class CouponController {
 
     private final CouponService couponService;
-
-    public CouponController(CouponService couponService) {
-        this.couponService = couponService;
-    }
 
     // 新增优惠券
     @PostMapping

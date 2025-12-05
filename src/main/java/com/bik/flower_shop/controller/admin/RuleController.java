@@ -4,6 +4,7 @@ import com.bik.flower_shop.pojo.dto.RuleDTO;
 import com.bik.flower_shop.pojo.entity.Rule;
 import com.bik.flower_shop.service.RuleService;
 import com.bik.flower_shop.common.ApiResult;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -14,14 +15,12 @@ import java.util.Map;
  * @author bik
  */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/admin/rule")
 public class RuleController {
 
     private final RuleService ruleService;
 
-    public RuleController(RuleService ruleService) {
-        this.ruleService = ruleService;
-    }
 
     @PostMapping
     public ApiResult<Rule> createRule(@ModelAttribute RuleDTO dto) {

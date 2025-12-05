@@ -1,9 +1,14 @@
 package com.bik.flower_shop.controller.admin;
 
 import com.bik.flower_shop.common.ApiResult;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * @author bik
+ */
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/admin")
 public class CategoryController {
     @GetMapping("/category")

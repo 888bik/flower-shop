@@ -6,7 +6,6 @@ import com.bik.flower_shop.service.ImageClassService;
 import com.bik.flower_shop.service.ImageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import java.util.HashMap;
 import java.util.List;
@@ -61,8 +60,6 @@ public class ImageClassController {
         boolean success = imageClassService.updateImageClassById(id, name, order);
         return ApiResult.ok(success);
     }
-
-
 
 
     @PostMapping("/{id}/delete")
