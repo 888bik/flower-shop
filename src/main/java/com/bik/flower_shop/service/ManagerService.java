@@ -233,7 +233,8 @@ public class ManagerService {
     private List<Map<String, Object>> buildMenuTree(List<Rule> rules, Integer parentId) {
         List<Map<String, Object>> tree = new ArrayList<>();
         for (Rule r : rules) {
-            if (Objects.equals(r.getRuleId(), parentId) && r.getMenu() != null && r.getMenu()) {
+            boolean isMenu = r.getMenu() != null && r.getMenu() == 1;
+            if (Objects.equals(r.getRuleId(), parentId) && isMenu) {
                 Map<String, Object> node = new HashMap<>();
                 node.put("id", r.getId());
                 node.put("rule_id", r.getRuleId());

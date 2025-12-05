@@ -5,8 +5,6 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.List;
@@ -29,7 +27,7 @@ public class Rule implements Serializable {
     private Integer id;
 
     /**
-     * 父级id
+     * 上级菜单ID
      */
     @TableField("rule_id")
     private Integer ruleId;
@@ -38,7 +36,7 @@ public class Rule implements Serializable {
      * 状态0关闭1启用
      */
     @TableField("status")
-    private Boolean status;
+    private Byte status;
 
     @TableField("create_time")
     private Integer createTime;
@@ -46,6 +44,9 @@ public class Rule implements Serializable {
     @TableField("update_time")
     private Integer updateTime;
 
+    /**
+     * 菜单/权限名称
+     */
     @TableField("name")
     private String name;
 
@@ -56,11 +57,14 @@ public class Rule implements Serializable {
     private String description;
 
     /**
-     * 前台路由注册路径
+     * 前台路由注册路径,menu=1且ruLeId>o时必填
      */
     @TableField("frontpath")
     private String frontpath;
 
+    /**
+     *  后端规则接口别名
+     */
     @TableField(value = "`condition`")
     private String condition;
 
@@ -68,7 +72,7 @@ public class Rule implements Serializable {
      * 是否显示为菜单：0不显示1关闭
      */
     @TableField("menu")
-    private Boolean menu;
+    private Byte menu;
 
     /**
      * 排序
