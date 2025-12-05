@@ -16,9 +16,14 @@ public class ApiResult<T> {
         return new ApiResult<>("ok", null, data);
     }
 
-    public static ApiResult<?> fail(String msg, Integer errorCode) {
-        return new ApiResult<>(msg, errorCode, null);
+    public static <T> ApiResult<T> fail(String msg, int code) {
+        ApiResult<T> result = new ApiResult<>();
+        result.setMsg(msg);
+        result.setErrorCode(code);
+        result.setData(null);
+        return result;
     }
+
 
     public static ApiResult<?> ok() {
         return ok(null);

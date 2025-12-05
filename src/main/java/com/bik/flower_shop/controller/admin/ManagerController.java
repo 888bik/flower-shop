@@ -12,6 +12,9 @@ import org.springframework.http.MediaType;
 
 import java.util.Map;
 
+/**
+ * @author bik
+ */
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
@@ -29,14 +32,12 @@ public class ManagerController {
 
     @PostMapping("/logout")
     public ApiResult<String> logout(@RequestHeader("token") String token) {
-
         managerService.logout(token);
         return ApiResult.ok("退出登录成功");
     }
 
     @PostMapping("/create")
     public ApiResult<Manager> save(@RequestBody Manager manager) {
-        System.out.println(manager);
         Manager created = managerService.createManager(manager);
         return ApiResult.ok(created);
     }

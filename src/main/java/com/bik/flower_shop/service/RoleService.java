@@ -47,7 +47,7 @@ public class RoleService {
         role.setName(dto.getName());
         role.setDescription(dto.getDescription());
 
-        byte status = (dto.getStatus() == null) ? (byte) 1 : dto.getStatus().byteValue();
+        byte status = (dto.getStatus() == null) ? (byte) 1 : dto.getStatus();
         role.setStatus(status);
 
         int now = (int) Instant.now().getEpochSecond();

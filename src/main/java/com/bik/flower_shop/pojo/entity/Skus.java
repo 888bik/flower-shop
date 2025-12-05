@@ -57,6 +57,6 @@ public class Skus implements Serializable {
     @TableField(value = "`order`")
     private Integer order;
 
-    @TableField("default")
-    private String Default;
+    @TableField("defaults")
+    private String defaults;
 }
