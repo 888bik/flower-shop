@@ -49,7 +49,7 @@ public class Skus implements Serializable {
      * 状态：0禁用1启用
      */
     @TableField("status")
-    private Boolean status;
+    private Byte status;
 
     /**
      * 排序

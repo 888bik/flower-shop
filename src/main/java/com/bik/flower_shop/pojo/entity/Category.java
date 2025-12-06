@@ -31,7 +31,7 @@ public class Category implements Serializable {
     private String name;
 
     @TableField("status")
-    private Boolean status;
+    private Byte status;
 
     @TableField("create_time")
     private Integer createTime;

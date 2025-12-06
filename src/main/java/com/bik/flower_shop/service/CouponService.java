@@ -31,7 +31,7 @@ public class CouponService {
         coupon.setMinPrice(dto.getMinPrice());
         coupon.setStartTime(dto.getStartTime());
         coupon.setEndTime(dto.getEndTime());
-        coupon.setStatus((byte) 1); // 默认生效
+        coupon.setStatus((byte) 1);
         int now = (int) Instant.now().getEpochSecond();
         coupon.setCreateTime(now);
         coupon.setUpdateTime(now);

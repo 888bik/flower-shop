@@ -47,13 +47,12 @@ public class RoleService {
         role.setName(dto.getName());
         role.setDescription(dto.getDescription());
 
-        byte status = (dto.getStatus() == null) ? (byte) 1 : dto.getStatus();
-        role.setStatus(status);
+        role.setStatus(dto.getStatus() != null ? dto.getStatus() : (byte) 1);
 
         int now = (int) Instant.now().getEpochSecond();
         role.setCreateTime(now);
         role.setUpdateTime(now);
-        System.out.println(role);
+
         roleMapper.insert(role);
         return role;
     }

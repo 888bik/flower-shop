@@ -27,19 +27,19 @@ public class SkusService extends ServiceImpl<SkusMapper, Skus> {
     /**
      * 创建规格
      *
-     * @param statusInt 状态（1/0）
+     * @param status 状态（1/0）
      * @param name      规格名称
      * @param order     排序
      * @param defaults  规格值，逗号分隔
      * @return 插入后的 Skus（含 id）
      */
     @Transactional(rollbackFor = Exception.class)
-    public Skus createSkus(Integer statusInt, String name, Integer order, String defaults) {
+    public Skus createSkus(Byte status, String name, Integer order, String defaults) {
         Skus skus = new Skus();
         skus.setName(name);
         skus.setOrder(order);
 
-        skus.setStatus(statusInt != null && statusInt == 1);
+        skus.setStatus(status);
         skus.setDefaults(defaults);
 
         int now = (int) Instant.now().getEpochSecond();
@@ -51,7 +51,7 @@ public class SkusService extends ServiceImpl<SkusMapper, Skus> {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public boolean updateSkus(Integer id, Integer statusInt, String name, Integer order, String defaults) {
+    public boolean updateSkus(Integer id, Byte status, String name, Integer order, String defaults) {
         Skus skus = skusMapper.selectById(id);
         if (skus == null) {
             return false;
@@ -59,7 +59,7 @@ public class SkusService extends ServiceImpl<SkusMapper, Skus> {
 
         skus.setName(name);
         skus.setOrder(order);
-        skus.setStatus(statusInt != null && statusInt == 1);
+        skus.setStatus(status);
         skus.setDefaults(defaults);
         skus.setUpdateTime((int) Instant.now().getEpochSecond());
 
@@ -67,13 +67,13 @@ public class SkusService extends ServiceImpl<SkusMapper, Skus> {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public boolean updateSkusStatus(Integer id, Integer statusInt) {
+    public boolean updateSkusStatus(Integer id, Byte status) {
         Skus skus = skusMapper.selectById(id);
         if (skus == null) {
             return false;
         }
 
-        skus.setStatus(statusInt != null && statusInt == 1);
+        skus.setStatus(status);
         skus.setUpdateTime((int) Instant.now().getEpochSecond());
 
         return skusMapper.updateById(skus) > 0;
@@ -94,9 +94,9 @@ public class SkusService extends ServiceImpl<SkusMapper, Skus> {
             item.put("type", s.getType());
             item.put("create_time", TimeUtils.format(s.getCreateTime()));
             item.put("update_time", TimeUtils.format(s.getUpdateTime()));
-            item.put("status", s.getStatus() ? 1 : 0);
+            item.put("status", s.getStatus());
             item.put("order", s.getOrder());
-            item.put("default", s.getDefaults());
+            item.put("defaults", s.getDefaults());
             mapped.add(item);
         }
 

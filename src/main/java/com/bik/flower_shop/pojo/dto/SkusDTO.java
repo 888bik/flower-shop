@@ -20,7 +20,7 @@ public class SkusDTO {
 
     @NotNull(message = "status 不能为空")
     @Min(value = 0, message = "status 必须是非负整数")
-    private Integer status;
+    private Byte status;
 
     @NotBlank(message = "name 不能为空")
     private String name;

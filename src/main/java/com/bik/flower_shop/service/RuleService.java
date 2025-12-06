@@ -23,6 +23,8 @@ public class RuleService {
     }
 
     public Rule createRule(RuleDTO dto) {
+        System.out.println("11111111111111111111");
+        System.out.println(dto);
         Rule rule = new Rule();
         rule.setRuleId(dto.getRuleId());
         rule.setMenu(dto.getMenu());
@@ -50,7 +52,7 @@ public class RuleService {
     private List<Map<String, Object>> buildTree(List<Rule> rules, Integer parentId) {
         List<Map<String, Object>> tree = new ArrayList<>();
         for (Rule r : rules) {
-            if (Objects.equals(r.getRuleId(), parentId) && r.getMenu() != null && r.getMenu() == 1) {
+            if (Objects.equals(r.getRuleId(), parentId)) {
                 Map<String, Object> node = new HashMap<>();
                 node.put("id", r.getId());
                 node.put("rule_id", r.getRuleId());
@@ -65,8 +67,48 @@ public class RuleService {
                 node.put("icon", r.getIcon());
                 node.put("create_time", r.getCreateTime());
                 node.put("update_time", r.getUpdateTime());
-                // 子节点递归
-                node.put("child", buildTree(rules, r.getId()));
+                // 递归获取子节点
+                List<Map<String, Object>> children = buildTree(rules, r.getId());
+                if (!children.isEmpty()) {
+                    node.put("child", children);
+                }
+                tree.add(node);
+            }
+        }
+        // 按 order 排序
+        tree.sort(Comparator.comparingInt(n -> (Integer) n.getOrDefault("order", 0)));
+        return tree;
+    }
+
+    public List<Map<String, Object>> getRuleTree() {
+        List<Rule> rules = ruleMapper.selectAllRules();
+        return buildRuleTree(rules, 0);
+    }
+
+    private List<Map<String, Object>> buildRuleTree(List<Rule> rules, Integer parentId) {
+        List<Map<String, Object>> tree = new ArrayList<>();
+        for (Rule r : rules) {
+            if (Objects.equals(r.getRuleId(), parentId) && r.getMenu() != null && r.getMenu() != 0) {
+                Map<String, Object> node = new HashMap<>();
+                node.put("id", r.getId());
+                node.put("rule_id", r.getRuleId());
+                node.put("name", r.getName());
+                node.put("desc", r.getDescription());
+                node.put("menu", r.getMenu());
+                node.put("status", r.getStatus());
+                node.put("frontpath", r.getFrontpath());
+                node.put("condition", r.getCondition());
+                node.put("method", r.getMethod());
+                node.put("order", r.getOrder());
+                node.put("icon", r.getIcon());
+                node.put("create_time", r.getCreateTime());
+                node.put("update_time", r.getUpdateTime());
+
+                // 递归获取子节点
+                List<Map<String, Object>> children = buildRuleTree(rules, r.getId());
+                if (!children.isEmpty()) {
+                    node.put("child", children);
+                }
                 tree.add(node);
             }
         }
@@ -76,6 +118,7 @@ public class RuleService {
     }
 
 
+    @Transactional
     public boolean updateRule(Integer id, RuleDTO dto) {
 
         Rule rule = ruleMapper.selectById(id);

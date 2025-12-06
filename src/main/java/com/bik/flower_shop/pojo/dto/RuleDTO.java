@@ -1,5 +1,6 @@
 package com.bik.flower_shop.pojo.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;

@@ -2,10 +2,11 @@ package com.bik.flower_shop.pojo.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Data
 public class RoleDTO {
+
+    private Integer id;
 
     private String name;
 

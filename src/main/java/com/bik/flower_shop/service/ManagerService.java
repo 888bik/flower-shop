@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bik.flower_shop.mapper.ManagerMapper;
 import com.bik.flower_shop.mapper.RuleMapper;
+import com.bik.flower_shop.pojo.dto.ManagerDTO;
+import com.bik.flower_shop.pojo.dto.RoleDTO;
+import com.bik.flower_shop.pojo.dto.RoleSimpleDTO;
 import com.bik.flower_shop.pojo.entity.Manager;
 import com.bik.flower_shop.pojo.entity.Role;
 import com.bik.flower_shop.pojo.entity.Rule;
@@ -123,6 +126,28 @@ public class ManagerService {
         }
         managerMapper.deleteById(id);
         return true;
+    }
+
+    public Map<String, Object> getManagerList(Integer page, Integer limit, String keyword) {
+        int offset = (page - 1) * limit;
+        String kw = keyword == null ? "" : keyword;
+
+        List<ManagerDTO> list = managerMapper.getManagerList(offset, limit, kw);
+
+        int totalCount = managerMapper.getManagerCount(kw);
+
+        List<RoleSimpleDTO> roles = managerMapper.getAllRoles();
+
+        // 构建 manager.role 对象
+        for (ManagerDTO m : list) {
+            m.buildRole();
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("list", list);
+        data.put("totalCount", totalCount);
+        data.put("roles", roles);
+        return data;
     }
 
     // 修改状态

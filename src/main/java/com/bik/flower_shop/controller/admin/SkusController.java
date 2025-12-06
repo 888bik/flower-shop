@@ -2,6 +2,7 @@ package com.bik.flower_shop.controller.admin;
 
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.SkusDTO;
+import com.bik.flower_shop.pojo.dto.StatusDTO;
 import com.bik.flower_shop.pojo.entity.Skus;
 import com.bik.flower_shop.service.SkusService;
 import com.bik.flower_shop.utils.TimeUtils;
@@ -27,14 +28,12 @@ public class SkusController {
     @PostMapping
     public ApiResult<Map<String, Object>> createSkus(
             @RequestHeader("token") String token,
-            @ModelAttribute SkusDTO dto,
-            @RequestParam("defaults") String defaultParam
+            @RequestBody SkusDTO dto
     ) {
 
-        dto.setDefaults(defaultParam);
         Skus created = skusService.createSkus(dto.getStatus(), dto.getName(), dto.getOrder(), dto.getDefaults());
         Map<String, Object> data = new HashMap<>();
-        data.put("status", String.valueOf(created.getStatus() ? 1 : 0));
+        data.put("status", String.valueOf(created.getStatus()));
         data.put("name", created.getName());
         data.put("order", String.valueOf(created.getOrder()));
         data.put("defaults", created.getDefaults());
@@ -45,14 +44,22 @@ public class SkusController {
         return ApiResult.ok(data);
     }
 
+    /**
+     * 修改商品规格
+     */
     @PostMapping("/{id}")
     public ApiResult<Boolean> updateSkus(
             @RequestHeader("token") String token,
             @PathVariable("id") Integer id,
-            @ModelAttribute SkusDTO dto
+            @RequestBody SkusDTO dto
     ) {
-        System.out.println("updateSkus: " + dto);
-        boolean success = skusService.updateSkus(id, dto.getStatus(), dto.getName(), dto.getOrder(), dto.getDefaults());
+        boolean success = skusService.updateSkus(
+                id,
+                dto.getStatus(),
+                dto.getName(),
+                dto.getOrder(),
+                dto.getDefaults()
+        );
         return ApiResult.ok(success);
     }
 
@@ -63,9 +70,9 @@ public class SkusController {
     public ApiResult<Boolean> updateSkusStatus(
             @RequestHeader("token") String token,
             @PathVariable("id") Integer id,
-            @RequestParam("status") Integer status
+            @RequestBody StatusDTO dto
     ) {
-        boolean success = skusService.updateSkusStatus(id, status);
+        boolean success = skusService.updateSkusStatus(id, dto.getStatus());
         return ApiResult.ok(success);
     }
 

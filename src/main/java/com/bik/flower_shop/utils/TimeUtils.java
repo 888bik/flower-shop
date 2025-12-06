@@ -23,7 +23,17 @@ public class TimeUtils {
     /**
      * 时间戳(秒) 转 yyyy-MM-dd HH:mm:ss
      */
-    public static String format(long epochSecond) {
+    public static String format(Long epochSecond) {
+        if (epochSecond == null) {
+            return null;
+        }
+        return DTF.format(Instant.ofEpochSecond(epochSecond));
+    }
+
+    public static String format(Integer epochSecond) {
+        if (epochSecond == null) {
+            return null;
+        }
         return DTF.format(Instant.ofEpochSecond(epochSecond));
     }
 }

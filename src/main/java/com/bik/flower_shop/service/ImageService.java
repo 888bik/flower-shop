@@ -1,6 +1,7 @@
 package com.bik.flower_shop.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.bik.flower_shop.exception.BusinessException;
 import com.bik.flower_shop.mapper.ImageMapper;
 import com.bik.flower_shop.pojo.entity.Image;
 import com.qcloud.cos.COSClient;
@@ -123,7 +124,7 @@ public class ImageService {
 
         try {
             for (Image image : images) {
-                String objectName = image.getPath(); // 假设 path 存储的是上传的相对路径
+                String objectName = image.getPath();
                 if (objectName != null && !objectName.isEmpty()) {
                     cosClient.deleteObject(tencentBucketName, objectName);
                 }
@@ -134,6 +135,25 @@ public class ImageService {
 
         // 删除数据库记录
         return imageMapper.delete(new QueryWrapper<Image>().in("id", ids)) > 0;
+    }
+
+    // 根据分类ID统计图片数量
+    public Long countByClassId(Integer classId) {
+        return imageMapper.selectCount(new QueryWrapper<Image>().eq("image_class_id", classId));
+    }
+
+    /**
+     * 修改图片名称
+     */
+    public boolean updateImageName(Integer imageId, String newName) {
+        Image image = imageMapper.selectById(imageId);
+        if (image == null) {
+            throw new BusinessException("图片不存在");
+        }
+
+        image.setName(newName);
+        int updated = imageMapper.updateById(image);
+        return updated > 0;
     }
 
 }
