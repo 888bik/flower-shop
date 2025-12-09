@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,8 +18,7 @@ import java.io.Serializable;
  * @author bik
  * @since 2025-12-04
  */
-@Getter
-@Setter
+@Data
 @TableName("goods_skus_card")
 public class GoodsSkusCard implements Serializable {
 
@@ -40,7 +40,7 @@ public class GoodsSkusCard implements Serializable {
      * 商品属性卡片属性类型 0无 1颜色 2图片
      */
     @TableField("type")
-    private Boolean type;
+    private Byte type;
 
     /**
      * 排序

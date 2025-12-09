@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 
 /**
  * <p>
- * 
+ *
  * </p>
  *
  * @author bik
@@ -50,7 +50,7 @@ public class Goods implements Serializable {
      * 平均评分
      */
     @TableField("rating")
-    private Double rating;
+    private BigDecimal rating;
 
     /**
      * 总销量
@@ -101,19 +101,19 @@ public class Goods implements Serializable {
      * 是否审核 0审核中 1通过 2拒绝
      */
     @TableField("ischeck")
-    private Boolean ischeck;
+    private Byte ischeck;
 
     /**
      * 状态 0仓库1上架
      */
     @TableField("status")
-    private Boolean status;
+    private Byte status;
 
     /**
      * 库存显示 0隐藏 1显示
      */
     @TableField("stock_display")
-    private Boolean stockDisplay;
+    private Byte stockDisplay;
 
     /**
      * 运费模板id
@@ -125,7 +125,7 @@ public class Goods implements Serializable {
      * sku类型：0单一，1多规格
      */
     @TableField("sku_type")
-    private Boolean skuType;
+    private Byte skuType;
 
     /**
      * 单一规格值
@@ -143,16 +143,16 @@ public class Goods implements Serializable {
      * 折扣设置
      */
     @TableField("discount")
-    private Double discount;
+    private BigDecimal discount;
 
     @TableField("create_time")
-    private Integer createTime;
+    private Long createTime;
 
     @TableField("update_time")
-    private Integer updateTime;
+    private Long updateTime;
 
     @TableField("delete_time")
-    private Integer deleteTime;
+    private Long deleteTime;
 
     /**
      * 排序

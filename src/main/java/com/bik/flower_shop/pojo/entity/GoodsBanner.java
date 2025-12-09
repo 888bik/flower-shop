@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,8 +18,7 @@ import java.io.Serializable;
  * @author bik
  * @since 2025-12-04
  */
-@Getter
-@Setter
+@Data
 @TableName("goods_banner")
 public class GoodsBanner implements Serializable {
 
@@ -34,8 +34,8 @@ public class GoodsBanner implements Serializable {
     private String url;
 
     @TableField("create_time")
-    private Integer createTime;
+    private Long createTime;
 
     @TableField("update_time")
-    private Integer updateTime;
+    private Long updateTime;
 }

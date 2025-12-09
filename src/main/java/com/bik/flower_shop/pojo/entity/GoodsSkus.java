@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,14 +13,13 @@ import java.math.BigDecimal;
 
 /**
  * <p>
- * 
+ *
  * </p>
  *
  * @author bik
  * @since 2025-12-04
  */
-@Getter
-@Setter
+@Data
 @TableName("goods_skus")
 public class GoodsSkus implements Serializable {
 
@@ -50,13 +50,13 @@ public class GoodsSkus implements Serializable {
      * 体积
      */
     @TableField("volume")
-    private Double volume;
+    private BigDecimal volume;
 
     /**
      * 体重
      */
     @TableField("weight")
-    private Double weight;
+    private BigDecimal weight;
 
     /**
      * 编码

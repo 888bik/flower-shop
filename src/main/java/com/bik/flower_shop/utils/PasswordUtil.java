@@ -3,6 +3,9 @@ package com.bik.flower_shop.utils;
 
 import org.springframework.security.crypto.bcrypt.BCrypt;
 
+/**
+ * @author bik
+ */
 public class PasswordUtil {
     public static String encode(String password) {
         return BCrypt.hashpw(password, BCrypt.gensalt());
