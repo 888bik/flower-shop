@@ -1,9 +1,7 @@
 package com.bik.flower_shop.service;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -18,7 +16,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
@@ -254,7 +251,28 @@ public class GoodsService {
     }
 
     @Transactional
-    public void deleteGoodsByIds(List<Integer> ids) {
+    public void softDeleteGoods(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+
+        UpdateWrapper<Goods> wrapper = new UpdateWrapper<>();
+        wrapper.in("id", ids).set("delete_time", System.currentTimeMillis() / 1000);
+
+        goodsMapper.update(null, wrapper);
+    }
+
+    @Transactional
+    public void restoreGoods(List<Integer> ids) {
+        UpdateWrapper<Goods> wrapper = new UpdateWrapper<>();
+        wrapper.in("id", ids).set("delete_time", null);
+
+        goodsMapper.update(null, wrapper);
+    }
+
+
+    @Transactional
+    public void deleteForceGoods(List<Integer> ids) {
         if (ids == null || ids.isEmpty()) {
             return;
         }
@@ -263,14 +281,6 @@ public class GoodsService {
         QueryWrapper<Goods> wrapper = new QueryWrapper<>();
         wrapper.in("id", ids);
         goodsMapper.delete(wrapper);
-
-
-//        ids.forEach(id -> {
-//            Goods g = new Goods();
-//            g.setId(id);
-//            g.setDeleteTime(System.currentTimeMillis() / 1000L); // 秒级时间戳
-//            goodsMapper.updateById(g);
-//        });
     }
 
     /**
@@ -312,6 +322,11 @@ public class GoodsService {
                 case "min_stock" -> q.apply("stock <= min_stock");
                 case "delete" -> q.isNotNull("delete_time");
             }
+        }
+
+        // 默认排除已删除（只有 tab == "delete" 时才显示已删除）
+        if (!"delete".equals(dto.getTab())) {
+            q.isNull("delete_time");
         }
 
         if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
@@ -383,7 +398,8 @@ public class GoodsService {
                     // 解析为 List<Map<String,Object>>
                     List<Map<String, Object>> parsed = JSON.parseObject(
                             raw,
-                            new com.alibaba.fastjson.TypeReference<List<Map<String, Object>>>() {}
+                            new com.alibaba.fastjson.TypeReference<List<Map<String, Object>>>() {
+                            }
                     );
                     sv.setSkus(parsed);
                 } catch (Exception ex) {
@@ -462,7 +478,6 @@ public class GoodsService {
                 "cates", cates
         );
     }
-
 
 
     // 辅助：安全把 BigDecimal 转为字符串（避免 NPE）

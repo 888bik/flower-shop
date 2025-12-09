@@ -17,9 +17,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +36,62 @@ public class GoodsSkusService {
     private final GoodsSkusMapper goodsSkusMapper;
     private final GoodsSkusCardMapper goodsSkusCardMapper;
     private final GoodsSkusCardValueMapper goodsSkusCardValueMapper;
+
+
+    @Transactional
+    public Map<String, Object> setGoodsSkusCardValues(Integer cardId, SetGoodsSkusCardDTO dto) {
+        if (cardId == null) {
+            throw new IllegalArgumentException("规格卡片 id 不能为空");
+        }
+        if (dto == null) {
+            throw new IllegalArgumentException("请求体不能为空");
+        }
+        if (dto.getName() == null || dto.getName().isBlank()) {
+            throw new IllegalArgumentException("name 不能为空");
+        }
+
+        // 1. 查卡片是否存在
+        GoodsSkusCard card = goodsSkusCardMapper.selectById(cardId);
+        if (card == null) {
+
+            throw new RuntimeException("规格卡片不存在: id=" + cardId);
+        }
+
+        // 2. 更新卡片名称（如果有变化）
+        if (!dto.getName().equals(card.getName())) {
+            card.setName(dto.getName().trim());
+            goodsSkusCardMapper.updateById(card);
+        }
+
+        // 3. 删除该卡片下所有旧的规格值，避免残留
+        goodsSkusCardValueMapper.delete(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<GoodsSkusCardValue>()
+                        .eq("goods_skus_card_id", cardId)
+        );
+
+        // 4. 插入新的值（如果 value 为 null 或空 -> 表示清空所有值 -> 返回空列表）
+        List<GoodsSkusCardValue> inserted = new ArrayList<>();
+        if (dto.getValue() != null && !dto.getValue().isEmpty()) {
+            for (String v : dto.getValue()) {
+                if (v == null) {
+                    continue;
+                }
+                GoodsSkusCardValue val = new GoodsSkusCardValue();
+                val.setGoodsSkusCardId(cardId);
+                val.setName(dto.getName().trim());
+                val.setValue(v.trim());
+                val.setOrder(50);
+                goodsSkusCardValueMapper.insert(val);
+                inserted.add(val);
+            }
+        }
+
+        // 5. 返回结果：card + 新插入的 values
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("goodsSkusCard", card);
+        resp.put("goodsSkusCardValue", inserted);
+        return resp;
+    }
 
 
     @Transactional

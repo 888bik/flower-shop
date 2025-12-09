@@ -46,13 +46,32 @@ public class GoodsController {
     }
 
     /**
-     * 批量删除商品
-     *
+     * 批量删除商品(软删除)
      * @param request 请求体包含 ids 数组
      */
     @PostMapping("/delete_all")
     public ApiResult<String> deleteGoods(@RequestBody DeleteGoodsRequest request) {
-        goodsService.deleteGoodsByIds(request.getIds());
+        goodsService.softDeleteGoods(request.getIds());
+        return ApiResult.ok("ok");
+    }
+
+    /**
+     * 批量恢复商品
+     * @param request 请求体包含 ids 数组
+     */
+    @PostMapping("/restore")
+    public ApiResult<String> restore(@RequestBody DeleteGoodsRequest request) {
+        goodsService.restoreGoods(request.getIds());
+        return ApiResult.ok("ok");
+    }
+
+    /**
+     * 批量删除商品
+     * @param request 请求体包含 ids 数组
+     */
+    @PostMapping("/delete_force")
+    public ApiResult<String> deleteForce(@RequestBody DeleteGoodsRequest request) {
+        goodsService.deleteForceGoods(request.getIds());
         return ApiResult.ok("ok");
     }
 
@@ -68,6 +87,9 @@ public class GoodsController {
     }
 
 
+    /**
+     * 更新商品信息
+     */
     @PostMapping("/{id}")
     public ApiResult<String> updateGoods(@PathVariable Integer id, @RequestBody UpdateGoodsDTO dto,
                                          @RequestHeader(value = "token", required = false) String token) {
@@ -110,6 +132,9 @@ public class GoodsController {
         return ApiResult.ok(result);
     }
 
+    /**
+     * 更新商品详情
+     */
     @PostMapping("/updateContent/{id}")
     public ApiResult<Void> updateGoodsContent(
             @PathVariable Long id,
@@ -123,9 +148,6 @@ public class GoodsController {
 
     /**
      * 审核商品（通过自动上架，拒绝自动下架）
-     *
-     * @param id      商品ID
-     * @param ischeck 审核状态 1同意 2拒绝
      */
     @PostMapping("/{id}/check")
     public ApiResult<Boolean> checkGoods(

@@ -29,6 +29,9 @@ public class GoodsSkusController {
     private final GoodsSkusService goodsSkusService;
 
 
+    /**
+     * 创建商品规格项
+     */
     @PostMapping
     public ApiResult<Map<String, Object>> createGoodsSkusCard(@RequestBody AddGoodsSkusCardDTO dto) {
         try {
@@ -50,15 +53,21 @@ public class GoodsSkusController {
     }
 
 
+    /**
+     * 更新商品规格项的值
+     */
     @PostMapping("/updateskus/{id}")
-    public ApiResult<Boolean> updateGoodsSkus(@PathVariable Long id, @RequestBody UpdateSkusDTO dto) {
+    public ApiResult<Boolean> updateGoodsSkusCard(@PathVariable Long id, @RequestBody UpdateSkusDTO dto) {
         goodsSkusService.updateGoodsSkus(id, dto);
         return ApiResult.ok(true);
     }
 
 
+    /**
+     * 删除商品规格项
+     */
     @PostMapping("/{id}/delete")
-    public ApiResult<Boolean> deleteGoodsSkus(@PathVariable Integer id) {
+    public ApiResult<Boolean> deleteGoodsSkusCard(@PathVariable Integer id) {
         boolean ok = goodsSkusService.deleteGoodsSkusCard(id);
         if (ok) {
             return ApiResult.ok(true);
@@ -67,6 +76,9 @@ public class GoodsSkusController {
     }
 
 
+    /**
+     * 更新商品规格项
+     */
     @PostMapping("/{id}")
     public ApiResult<GoodsSkusCardVO> updateGoodsSkusCard(
             @PathVariable("id") Integer id,
@@ -76,8 +88,11 @@ public class GoodsSkusController {
         return ApiResult.ok(vo);
     }
 
+    /**
+     * 排序商品规格项
+     */
     @PostMapping("/sort")
-    public ApiResult<Boolean> sortGoodsSkus(@RequestBody UpdateGoodsSkusOrderDTO dto) {
+    public ApiResult<Boolean> sortGoodsSkusCard(@RequestBody UpdateGoodsSkusOrderDTO dto) {
         try {
             boolean ok = goodsSkusService.sortGoodsSkus(dto);
             if (ok) {
@@ -91,18 +106,27 @@ public class GoodsSkusController {
         }
     }
 
+    /**
+     * 添加商品规格值
+     */
     @PostMapping("/value")
     public ApiResult<GoodsSkusCardValue> createSkusCardValue(@RequestBody CreateGoodsSkusCardValueDTO dto) {
         GoodsSkusCardValue created = goodsSkusService.createGoodsSkusCardValue(dto);
         return ApiResult.ok(created);
     }
 
+    /**
+     * 删除商品规格值
+     */
     @PostMapping("/{id}/deleteValue")
-    public ApiResult<Boolean> delete(@PathVariable Integer id) {
+    public ApiResult<Boolean> deleteSkusCardValue(@PathVariable Integer id) {
         boolean ok = goodsSkusService.deleteGoodsSkusCardValue(id);
         return ApiResult.ok(ok);
     }
 
+    /**
+     * 更新商品规格值
+     */
     @PostMapping("/{id}/updateValue")
     public ApiResult<Boolean> updateGoodsSkusCardValue(
             @PathVariable Integer id,
@@ -110,5 +134,18 @@ public class GoodsSkusController {
 
         boolean ok = goodsSkusService.updateGoodsSkusCardValue(id, dto);
         return ApiResult.ok(ok);
+    }
+
+
+    /**
+     * 设置商品规格值
+     */
+    @PostMapping("/{id}/set")
+    public ApiResult<Map<String, Object>> setGoodsSkusCardAndValue(
+            @PathVariable Integer id,
+            @RequestBody SetGoodsSkusCardDTO dto) {
+
+        Map<String, Object> result = goodsSkusService.setGoodsSkusCardValues(id, dto);
+        return ApiResult.ok(result);
     }
 }
