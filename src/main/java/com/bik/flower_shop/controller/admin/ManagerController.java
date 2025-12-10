@@ -106,6 +106,7 @@ public class ManagerController {
         boolean result = managerService.updateStatus(id, status);
         return ApiResult.ok(result);
     }
+
     /**
      * 删除管理员
      */
@@ -117,6 +118,7 @@ public class ManagerController {
         boolean result = managerService.deleteManager(id);
         return ApiResult.ok(result);
     }
+
     /**
      * 修改管理员信息
      */

@@ -1,77 +1,58 @@
 package com.bik.flower_shop.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.bik.flower_shop.exception.BusinessException;
 import com.bik.flower_shop.mapper.ManagerMapper;
 import com.bik.flower_shop.mapper.RuleMapper;
 import com.bik.flower_shop.pojo.dto.ManagerDTO;
-import com.bik.flower_shop.pojo.dto.RoleDTO;
 import com.bik.flower_shop.pojo.dto.RoleSimpleDTO;
 import com.bik.flower_shop.pojo.entity.Manager;
 import com.bik.flower_shop.pojo.entity.Role;
 import com.bik.flower_shop.pojo.entity.Rule;
 import com.bik.flower_shop.utils.PasswordUtil;
-import com.bik.flower_shop.utils.TokenUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import com.bik.flower_shop.service.impl.TokenService;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * @author bik
+ */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ManagerService {
 
     private final ManagerMapper managerMapper;
     private final RoleService roleService;
     private final RuleMapper ruleMapper;
+    private final TokenService tokenService;
 
-    // 获取管理员分页列表（不含 role.rules，role 只返回 id/name）
-    public Page<Manager> getManagerList(long page, long limit, String keyword) {
-        Page<Manager> pager = new Page<>(page, limit);
-        QueryWrapper<Manager> query = new QueryWrapper<>();
-        if (keyword != null && !keyword.isEmpty()) {
-            query.like("username", keyword);
-        }
-        query.orderByDesc("id");
-        return managerMapper.selectPage(pager, query);
-    }
-
-    // 返回 list + totalCount + roles（供 Controller 直接使用）
-    public Map<String, Object> getManagerListWithRoles(long page, long limit, String keyword) {
-        Page<Manager> p = getManagerList(page, limit, keyword);
-        List<Role> roles = roleService.getAllRoles();
-        Map<String, Object> result = new HashMap<>();
-        result.put("list", p.getRecords());
-        result.put("totalCount", p.getTotal());
-        result.put("roles", roles);
-        return result;
-    }
-
-    // 新增管理员（检查 username 唯一）
+    @Transactional
     public Manager createManager(Manager manager) {
-        // 校验密码
-        if (manager.getPassword() == null || manager.getPassword().isEmpty()) {
-            throw new RuntimeException("密码不能为空");
+        // 基本校验 & trim
+        if (manager.getUsername() == null || manager.getUsername().trim().isEmpty()) {
+            throw new BusinessException("用户名不能为空");
+        }
+        if (manager.getPassword() == null || manager.getPassword().trim().isEmpty()) {
+            throw new BusinessException("密码不能为空");
+        }
+        manager.setUsername(manager.getUsername().trim());
+
+        // 检查用户名是否存在
+        long count = managerMapper.selectCount(new QueryWrapper<Manager>().eq("username", manager.getUsername()));
+        if (count > 0) {
+            throw new BusinessException("用户名已存在");
         }
 
-        // 设置默认非超级管理员
+        manager.setPassword(PasswordUtil.encode(manager.getPassword().trim()));
         if (manager.getSuperAdmin() == null) {
             manager.setSuperAdmin(false);
         }
-
-        // 检查用户名是否存在
-        long count = managerMapper.selectCount(
-                new QueryWrapper<Manager>().eq("username", manager.getUsername())
-        );
-        if (count > 0) {
-            throw new RuntimeException("用户名已存在");
-        }
-
-        // 密码加密
-        manager.setPassword(PasswordUtil.encode(manager.getPassword()));
-
-        // 默认状态
         if (manager.getStatus() == null) {
             manager.setStatus((byte) 1);
         }
@@ -80,28 +61,29 @@ public class ManagerService {
         manager.setCreateTime(now);
         manager.setUpdateTime(now);
 
-        // 插入数据库
         managerMapper.insert(manager);
-
-        // 不返回密码
         manager.setPassword(null);
+        log.info("createManager success, id={}, username={}", manager.getId(), manager.getUsername());
         return manager;
     }
 
-    // 更新管理员（检查 username 唯一）
     public boolean updateManagerById(Integer id, Manager dto) {
         Manager old = managerMapper.selectById(id);
         if (old == null) {
-            throw new RuntimeException("该id不存在");
+            throw new BusinessException("该id不存在");
         }
-        if (old.getSuperAdmin() != null && old.getSuperAdmin()) {
-            throw new RuntimeException("超级管理员禁止修改");
+        ;
+        if (Boolean.TRUE.equals(old.getSuperAdmin())) {
+            throw new BusinessException("超级管理员禁止修改");
         }
-        // 若改用户名，检查重复
+
         if (dto.getUsername() != null && !dto.getUsername().equals(old.getUsername())) {
-            Integer c = Math.toIntExact(managerMapper.selectCount(new QueryWrapper<Manager>().eq("username", dto.getUsername()).ne("id", id)));
+            long c = managerMapper.selectCount(new QueryWrapper<Manager>().eq("username", dto.getUsername()).ne("id", id));
+            if (c > 0) {
+                throw new BusinessException("用户名已存在");
+            }
         }
-        // 如果密码为空字符串则忽略，如果不为空则加密
+
         if (dto.getPassword() != null) {
             if (dto.getPassword().isEmpty()) {
                 dto.setPassword(null);
@@ -167,27 +149,40 @@ public class ManagerService {
 
     // 登录
     public String login(String username, String password) {
-        Manager manager = managerMapper.selectOne(new QueryWrapper<Manager>().eq("username", username));
-        if (manager == null || !PasswordUtil.verify(password, manager.getPassword())) {
-            throw new RuntimeException("用户名或密码错误");
+        if (username == null || password == null) {
+            throw new BusinessException("用户名或密码不能为空");
         }
-        String token = TokenUtil.createToken(manager.getId());
-        TokenUtil.storeLoginState(token, manager.getId());
-        return token;
+        Manager manager = managerMapper.selectOne(new QueryWrapper<Manager>().eq("username", username.trim()));
+        if (manager == null || !PasswordUtil.verify(password, manager.getPassword())) {
+            throw new BusinessException("用户名或密码错误");
+        }
+
+        managerMapper.updateById(manager);
+
+        manager.setPassword(null);
+
+        return tokenService.createToken(manager);
     }
 
     // 退出登录
     public void logout(String token) {
-        TokenUtil.logout(token);
+        tokenService.invalidateToken(token);
     }
 
     // 修改当前登录用户密码（通过 token 获取 user）
     public boolean updatePasswordByToken(String token, String oldPassword, String newPassword, String rePassword) {
-        Integer uid = TokenUtil.checkToken(token);
-        Manager m = managerMapper.selectById(uid);
-        if (m == null) {
+        Manager mgrFromRedis = tokenService.getManagerByToken(token);
+        if (mgrFromRedis == null) {
             throw new RuntimeException("非法token，请先登录！");
         }
+
+        // 为了拿到最新密码，从数据库读取用户
+        Integer uid = mgrFromRedis.getId();
+        Manager m = managerMapper.selectById(uid);
+        if (m == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
         if (!PasswordUtil.verify(oldPassword, m.getPassword())) {
             throw new RuntimeException("旧密码不正确");
         }
@@ -198,16 +193,20 @@ public class ManagerService {
         m.setUpdateTime((int) (System.currentTimeMillis() / 1000));
         managerMapper.updateById(m);
         // 使当前 token 失效
-        TokenUtil.logout(token);
+        tokenService.invalidateToken(token);
         return true;
     }
 
-    // 获取当前管理员信息（包含 role、menus、ruleNames）
     public Map<String, Object> getInfoByToken(String token) {
-        Integer uid = TokenUtil.checkToken(token);
+        Manager mgrFromRedis = tokenService.getManagerByToken(token);
+        if (mgrFromRedis == null) {
+            throw new RuntimeException("非法token，请先登录！");
+        }
+        // 使用 redis 中的 id 去数据库拉取最新信息（例如角色可能已变）
+        Integer uid = mgrFromRedis.getId();
         Manager m = managerMapper.selectById(uid);
         if (m == null) {
-            throw new RuntimeException("非法token，请先登录！");
+            throw new RuntimeException("用户不存在");
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -325,5 +324,4 @@ public class ManagerService {
             }
         }
     }
-
 }
