@@ -35,9 +35,10 @@ public class GoodsService {
     private final GoodsSkusMapper goodsSkusMapper;
     private final GoodsSkusCardMapper goodsSkusCardMapper;
     private final GoodsSkusCardValueMapper goodsSkusCardValueMapper;
+    private final GoodsCategoryMapper goodsCategoryMapper;
 
 
-    public void checkGoods(Long id, Byte isCheck) {
+    public void checkGoods(Integer id, Byte isCheck) {
         Integer status = (isCheck != null && isCheck == 1) ? 1 : 0;
         System.out.println("isCheck: " + isCheck);
 
@@ -53,7 +54,7 @@ public class GoodsService {
         }
     }
 
-    public void updateContent(Long id, String content) {
+    public void updateContent(Integer id, String content) {
 
         UpdateWrapper<Goods> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", id)
@@ -223,18 +224,12 @@ public class GoodsService {
 
     @Transactional
     public boolean updateGoods(Integer id, UpdateGoodsDTO dto) {
-        if (id == null || dto == null) {
-            return false;
-        }
-
         Goods goods = goodsMapper.selectById(id);
         if (goods == null) {
             return false;
         }
 
-        // 更新字段
         goods.setTitle(dto.getTitle());
-        goods.setCategoryId(dto.getCategoryId());
         goods.setCover(dto.getCover());
         goods.setDescription(dto.getDescription());
         goods.setUnit(dto.getUnit());
@@ -245,10 +240,33 @@ public class GoodsService {
         goods.setMinPrice(dto.getMinPrice());
         goods.setMinOprice(dto.getMinOprice());
 
-        goods.setUpdateTime(Instant.now().getEpochSecond());
+        // 兼容单一字段
+        if (dto.getCategoryIds() != null && !dto.getCategoryIds().isEmpty()) {
+            goods.setCategoryId(dto.getCategoryIds().get(0));
+        } else if (dto.getCategoryId() != null) {
+            goods.setCategoryId(dto.getCategoryId());
+        }
 
-        return goodsMapper.updateById(goods) > 0;
+        goods.setUpdateTime(Instant.now().getEpochSecond());
+        goodsMapper.updateById(goods);
+
+        // 更新关联表
+        goodsCategoryMapper.deleteByGoodsId(id);
+        List<Integer> categoryIds = dto.getCategoryIds();
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            LinkedHashSet<Integer> set = new LinkedHashSet<>(categoryIds);
+            List<GoodsCategory> list = set.stream().map(cid -> {
+                GoodsCategory gc = new GoodsCategory();
+                gc.setGoodsId(id);
+                gc.setCategoryId(cid);
+                return gc;
+            }).collect(Collectors.toList());
+            goodsCategoryMapper.batchInsert(list);
+        }
+
+        return true;
     }
+
 
     @Transactional
     public void softDeleteGoods(List<Integer> ids) {
@@ -288,21 +306,42 @@ public class GoodsService {
      */
     @Transactional
     public Goods saveGoods(Goods goods) {
-
-        // 默认审核状态
         if (goods.getIscheck() == null) {
             goods.setIscheck((byte) 0);
         }
 
-        // 设置创建时间和更新时间
         long now = Instant.now().getEpochSecond();
         goods.setCreateTime(now);
         goods.setUpdateTime(now);
 
+        // 兼容旧字段，如果 categoryId 为空，则用 categoryIds 的第一个
+        List<Integer> categoryIds = goods.getCategoryIds();
+        if ((goods.getCategoryId() == null || goods.getCategoryId() == 0) && categoryIds != null && !categoryIds.isEmpty()) {
+            goods.setCategoryId(categoryIds.get(0));
+        }
+
+        // 插入商品主表
         goodsMapper.insert(goods);
+
+        // 保存关联表（去重）
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            LinkedHashSet<Integer> set = new LinkedHashSet<>(categoryIds);
+            List<GoodsCategory> list = set.stream().map(cid -> {
+                GoodsCategory gc = new GoodsCategory();
+                gc.setGoodsId(goods.getId());
+                gc.setCategoryId(cid);
+                return gc;
+            }).collect(Collectors.toList());
+
+            if (!list.isEmpty()) {
+                goodsCategoryMapper.batchInsert(list);
+            }
+        }
         return goods;
     }
 
+
+    @Transactional(readOnly = true)
     public Map<String, Object> listGoods(GoodsQueryDTO dto) {
         if (dto == null) {
             dto = new GoodsQueryDTO();
@@ -311,163 +350,148 @@ public class GoodsService {
         int page = dto.getPage() == null || dto.getPage() < 1 ? 1 : dto.getPage();
         int limit = dto.getLimit() == null || dto.getLimit() < 1 ? 10 : dto.getLimit();
 
-        Page<Goods> p = new Page<>(page, limit);
-        QueryWrapper<Goods> q = new QueryWrapper<>();
+        // 1. 多分类筛选
+        List<Integer> filterGoodsIds = null;
+        if (dto.getCategoryIds() != null && !dto.getCategoryIds().isEmpty()) {
+            filterGoodsIds = Optional.ofNullable(
+                    goodsCategoryMapper.selectGoodsIdsByCategoryIds(dto.getCategoryIds())
+            ).orElse(Collections.emptyList());
 
-        if (dto.getTab() != null) {
-            switch (dto.getTab()) {
-                case "checking" -> q.eq("ischeck", 0);
-                case "saling" -> q.eq("status", 1);
-                case "off" -> q.eq("status", 0);
-                case "min_stock" -> q.apply("stock <= min_stock");
-                case "delete" -> q.isNotNull("delete_time");
+            if (filterGoodsIds.isEmpty()) {
+                return Map.of(
+                        "list", Collections.emptyList(),
+                        "totalCount", 0L,
+                        "cates", categoryMapper.selectList(null)
+                );
             }
         }
 
-        // 默认排除已删除（只有 tab == "delete" 时才显示已删除）
-        if (!"delete".equals(dto.getTab())) {
-            q.isNull("delete_time");
+        // 2. 构造商品查询 Wrapper
+        QueryWrapper<Goods> wrapper = new QueryWrapper<>();
+
+        // 分类过滤
+        if (filterGoodsIds != null) {
+            wrapper.in("id", filterGoodsIds);
+        } else if (dto.getCategoryId() != null) {
+            wrapper.eq("category_id", dto.getCategoryId());
         }
 
+        // *** 关键逻辑：删除状态筛选 ***
+        if ("delete".equals(dto.getTab())) {
+            wrapper.isNotNull("delete_time");
+        } else {
+            wrapper.isNull("delete_time");
+        }
+
+        // 其他 tab 筛选
+        if (dto.getTab() != null) {
+            switch (dto.getTab()) {
+                case "checking" -> wrapper.eq("ischeck", 0);
+                case "saling" -> wrapper.eq("status", 1);
+                case "off" -> wrapper.eq("status", 0);
+                case "min_stock" -> wrapper.apply("stock <= min_stock");
+            }
+        }
+
+        // 搜索标题
         if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
-            q.like("title", dto.getTitle().trim());
+            wrapper.like("title", dto.getTitle().trim());
         }
 
-        if (dto.getCategoryId() != null) {
-            q.eq("category_id", dto.getCategoryId());
-        }
+        wrapper.orderByDesc("id");
 
-        q.orderByDesc("id");
-
-        Page<Goods> goodsPage = goodsMapper.selectPage(p, q);
+        // 3. 分页查询
+        Page<Goods> pageObj = new Page<>(page, limit);
+        Page<Goods> goodsPage = goodsMapper.selectPage(pageObj, wrapper);
         List<Goods> goodsList = Optional.ofNullable(goodsPage.getRecords()).orElse(Collections.emptyList());
 
-        List<Category> cates = Optional.ofNullable(categoryMapper.selectList(null)).orElse(Collections.emptyList());
         if (goodsList.isEmpty()) {
             return Map.of(
                     "list", Collections.emptyList(),
                     "totalCount", goodsPage.getTotal(),
-                    "cates", cates
+                    "cates", categoryMapper.selectList(null)
             );
         }
 
-        List<Integer> goodsIds = goodsList.stream()
-                .map(Goods::getId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
+        List<Integer> goodsIds = goodsList.stream().map(Goods::getId).collect(Collectors.toList());
 
-        List<GoodsBanner> banners = Optional.ofNullable(
-                goodsBannerMapper.selectList(new QueryWrapper<GoodsBanner>().in("goods_id", goodsIds))
-        ).orElse(Collections.emptyList());
+        // 4. 批量查询关联
+        List<GoodsBanner> banners = goodsBannerMapper.selectList(new QueryWrapper<GoodsBanner>().in("goods_id", goodsIds));
+        List<GoodsAttrs> attrs = goodsAttrsMapper.selectList(new QueryWrapper<GoodsAttrs>().in("goods_id", goodsIds));
+        List<GoodsSkus> skus = goodsSkusMapper.selectList(new QueryWrapper<GoodsSkus>().in("goods_id", goodsIds));
+        List<GoodsSkusCard> cards = goodsSkusCardMapper.selectList(new QueryWrapper<GoodsSkusCard>().in("goods_id", goodsIds));
 
-        List<GoodsAttrs> attrs = Optional.ofNullable(
-                goodsAttrsMapper.selectList(new QueryWrapper<GoodsAttrs>().in("goods_id", goodsIds))
-        ).orElse(Collections.emptyList());
-
-        // 原始 skus 行（字符串 skus 字段）
-        List<GoodsSkus> skus = Optional.ofNullable(
-                goodsSkusMapper.selectList(new QueryWrapper<GoodsSkus>().in("goods_id", goodsIds))
-        ).orElse(Collections.emptyList());
-
-        List<GoodsSkusCard> cards = Optional.ofNullable(
-                goodsSkusCardMapper.selectList(new QueryWrapper<GoodsSkusCard>().in("goods_id", goodsIds))
-        ).orElse(Collections.emptyList());
-
-        List<GoodsSkusCardValue> cardValues;
-        if (cards.isEmpty()) {
-            cardValues = Collections.emptyList();
-        } else {
-            List<Integer> cardIds = cards.stream().map(GoodsSkusCard::getId).filter(Objects::nonNull).distinct().toList();
-            cardValues = Optional.ofNullable(
-                    goodsSkusCardValueMapper.selectList(new QueryWrapper<GoodsSkusCardValue>().in("goods_skus_card_id", cardIds))
-            ).orElse(Collections.emptyList());
+        List<GoodsSkusCardValue> cardValues = Collections.emptyList();
+        if (!cards.isEmpty()) {
+            List<Integer> cardIds = cards.stream().map(GoodsSkusCard::getId).collect(Collectors.toList());
+            cardValues = goodsSkusCardValueMapper.selectList(new QueryWrapper<GoodsSkusCardValue>().in("goods_skus_card_id", cardIds));
         }
 
-        // 分组
+        List<GoodsCategory> goodsCats = goodsCategoryMapper.selectByGoodsIds(goodsIds);
+
+        // 5. 构造数据映射
         Map<Integer, List<GoodsBanner>> bannerMap = groupBy(banners, GoodsBanner::getGoodsId);
         Map<Integer, List<GoodsAttrs>> attrsMap = groupBy(attrs, GoodsAttrs::getGoodsId);
 
-        // === 关键：把 List<GoodsSkus> 转为 List<GoodsSkusVO> 并按 goodsId 分组 ===
-        List<GoodsSkusVO> skusVoList = skus.stream().map(s -> {
-            GoodsSkusVO sv = new GoodsSkusVO();
-            BeanUtils.copyProperties(s, sv);
-            String raw = s.getSkus();
-            if (raw != null && !raw.isBlank()) {
+        Map<Integer, List<GoodsSkusVO>> skusMap = skus.stream().map(s -> {
+            GoodsSkusVO vo = new GoodsSkusVO();
+            BeanUtils.copyProperties(s, vo);
+            if (s.getSkus() != null && !s.getSkus().isBlank()) {
                 try {
-                    // 解析为 List<Map<String,Object>>
-                    List<Map<String, Object>> parsed = JSON.parseObject(
-                            raw,
-                            new com.alibaba.fastjson.TypeReference<List<Map<String, Object>>>() {
-                            }
-                    );
-                    sv.setSkus(parsed);
-                } catch (Exception ex) {
-                    // 解析失败就置为 null，避免抛异常
-                    sv.setSkus(null);
+                    vo.setSkus(JSON.parseObject(s.getSkus(), new com.alibaba.fastjson.TypeReference<List<Map<String, Object>>>() {
+                    }));
+                } catch (Exception ignore) {
                 }
-            } else {
-                sv.setSkus(null);
             }
-            return sv;
-        }).toList();
-
-        Map<Integer, List<GoodsSkusVO>> skusVoMap = skusVoList.stream()
-                .filter(Objects::nonNull)
-                .filter(v -> v.getGoodsId() != null)
-                .collect(Collectors.groupingBy(GoodsSkusVO::getGoodsId));
+            return vo;
+        }).collect(Collectors.groupingBy(GoodsSkusVO::getGoodsId));
 
         Map<Integer, List<GoodsSkusCard>> cardsMap = groupBy(cards, GoodsSkusCard::getGoodsId);
-        Map<Integer, List<GoodsSkusCardValue>> cardValueMap = groupBy(cardValues, GoodsSkusCardValue::getGoodsSkusCardId);
-        Map<Integer, Category> categoryMap = cates.stream()
-                .filter(Objects::nonNull)
-                .filter(c -> c.getId() != null)
-                .collect(Collectors.toMap(Category::getId, c -> c, (a, b) -> a));
+        Map<Integer, List<GoodsSkusCardValue>> cardValuesMap = groupBy(cardValues, GoodsSkusCardValue::getGoodsSkusCardId);
 
-        List<GoodsVO> result = new ArrayList<>(goodsList.size());
+        // 分类映射
+        Map<Integer, List<Integer>> goodsToCatIds = goodsCats.stream()
+                .collect(Collectors.groupingBy(GoodsCategory::getGoodsId,
+                        Collectors.mapping(GoodsCategory::getCategoryId, Collectors.toList())));
+
+        Set<Integer> allCatIds = goodsCats.stream().map(GoodsCategory::getCategoryId).collect(Collectors.toSet());
+        Map<Integer, Category> catMap = allCatIds.isEmpty() ? Collections.emptyMap() :
+                categoryMapper.selectBatchIds(new ArrayList<>(allCatIds))
+                        .stream().collect(Collectors.toMap(Category::getId, c -> c));
+
+        List<Category> cates = categoryMapper.selectList(null);
+
+        // 6. 构建返回 VO
+        List<GoodsVO> result = new ArrayList<>();
         for (Goods g : goodsList) {
-            if (g == null) {
-                continue;
-            }
             GoodsVO vo = new GoodsVO();
             BeanUtils.copyProperties(g, vo);
 
-            // 处理金额
             vo.setMinPrice(safeDecimalToString(g.getMinPrice()));
             vo.setMinOprice(safeDecimalToString(g.getMinOprice()));
-
-            // 处理时间字段
-            vo.setCreateTime(g.getCreateTime());
-            vo.setUpdateTime(g.getUpdateTime());
-            vo.setDeleteTime(g.getDeleteTime());
-
-            // 处理 sku（这里保留原始 sku_value 字符串，前端若需要可解析）
-            vo.setSkuValue(g.getSkuValue());
-            vo.setSkuType(g.getSkuType());
-
-            // 分类
-            vo.setCategory(categoryMap.getOrDefault(g.getCategoryId(), null));
-
-            // 关联集合
             vo.setGoodsBanner(bannerMap.getOrDefault(g.getId(), List.of()));
             vo.setGoodsAttrs(attrsMap.getOrDefault(g.getId(), List.of()));
+            vo.setGoodsSkus(skusMap.getOrDefault(g.getId(), List.of()));
 
-            // 使用已解析的 GoodsSkusVO Map
-            vo.setGoodsSkus(skusVoMap.getOrDefault(g.getId(), List.of()));
-
-            // skusCard + values
-            List<GoodsSkusCard> cardList = cardsMap.getOrDefault(g.getId(), List.of());
-            List<GoodsSkusCardVO> voCards = new ArrayList<>(cardList.size());
-            for (GoodsSkusCard card : cardList) {
-                if (card == null) {
-                    continue;
-                }
+            // SKU Cards
+            List<GoodsSkusCardVO> voCards = new ArrayList<>();
+            for (GoodsSkusCard card : cardsMap.getOrDefault(g.getId(), List.of())) {
                 GoodsSkusCardVO cv = new GoodsSkusCardVO();
                 BeanUtils.copyProperties(card, cv);
-                cv.setGoodsSkusCardValue(cardValueMap.getOrDefault(card.getId(), List.of()));
+                cv.setGoodsSkusCardValue(cardValuesMap.getOrDefault(card.getId(), List.of()));
                 voCards.add(cv);
             }
             vo.setGoodsSkusCard(voCards);
+
+            // 分类
+            List<Integer> catIds = goodsToCatIds.getOrDefault(g.getId(), List.of());
+            vo.setCategoryIds(catIds);
+            vo.setCategories(catIds.stream().map(catMap::get).filter(Objects::nonNull).collect(Collectors.toList()));
+
+            // 兼容单分类
+            if ((vo.getCategory() == null || vo.getCategory().getId() == null) && !vo.getCategories().isEmpty()) {
+                vo.setCategory(vo.getCategories().get(0));
+            }
 
             result.add(vo);
         }

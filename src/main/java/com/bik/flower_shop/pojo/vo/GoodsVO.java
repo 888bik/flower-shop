@@ -18,6 +18,9 @@ public class GoodsVO {
     private Integer id;
     private String title;
     private Integer categoryId;
+    private List<Integer> categoryIds;
+    // 多分类
+    private List<Category> categories;
     private String cover;
 
 

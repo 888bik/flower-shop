@@ -20,7 +20,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addMapping("/admin/**")
                 // 允许带凭证时，不能使用 "*"
                 // 可以指定前端域名，或者使用 allowedOriginPatterns 支持通配符
-                .allowedOriginPatterns("http://localhost:3000", "http://127.0.0.1:5173")
+                .allowedOriginPatterns("http://127.0.0.1:3000", "http://127.0.0.1:5173")
                 .allowedMethods("*")
                 .allowedHeaders("*")
                 .exposedHeaders("token")
@@ -34,6 +34,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns(
                         "/admin/login",
+                        "/admin/goods/*",
                         "/error",
                         "/swagger-resources/**",
                         "/v2/api-docs/**",

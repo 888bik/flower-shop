@@ -9,8 +9,10 @@ import com.bik.flower_shop.service.GoodsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @author bik
@@ -30,16 +32,24 @@ public class GoodsController {
             @PathVariable Integer page,
             @RequestParam(value = "tab") String tab,
             @RequestParam(value = "title", required = false) String title,
-            @RequestParam(value = "categoryId", required = false) Integer categoryId,
             @RequestParam(value = "limit", required = false) Integer limit,
-            @RequestHeader(value = "token", required = false) String token
+            @RequestParam(value = "categoryIds", required = false) String categoryIds
     ) {
         GoodsQueryDTO dto = new GoodsQueryDTO();
         dto.setPage(page);
         dto.setTab(tab);
         dto.setTitle(title);
-        dto.setCategoryId(categoryId);
         dto.setLimit(limit);
+
+        if (categoryIds != null && !categoryIds.isBlank()) {
+            // categoryIds 可能格式 "1,2,3" 或 "1"，做简单解析
+            List<Integer> catIds = Arrays.stream(categoryIds.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(Integer::valueOf)
+                    .collect(Collectors.toList());
+            dto.setCategoryIds(catIds);
+        }
 
         Map<String, Object> result = goodsService.listGoods(dto);
         return ApiResult.ok(result);
@@ -47,6 +57,7 @@ public class GoodsController {
 
     /**
      * 批量删除商品(软删除)
+     *
      * @param request 请求体包含 ids 数组
      */
     @PostMapping("/delete_all")
@@ -57,6 +68,7 @@ public class GoodsController {
 
     /**
      * 批量恢复商品
+     *
      * @param request 请求体包含 ids 数组
      */
     @PostMapping("/restore")
@@ -67,6 +79,7 @@ public class GoodsController {
 
     /**
      * 批量删除商品
+     *
      * @param request 请求体包含 ids 数组
      */
     @PostMapping("/delete_force")
@@ -80,8 +93,7 @@ public class GoodsController {
      * 添加商品
      */
     @PostMapping
-    public ApiResult<Goods> createGoods(@RequestBody Goods goods,
-                                        @RequestHeader("token") String token) {
+    public ApiResult<Goods> createGoods(@RequestBody Goods goods){
         Goods saved = goodsService.saveGoods(goods);
         return ApiResult.ok(saved);
     }
@@ -137,7 +149,7 @@ public class GoodsController {
      */
     @PostMapping("/updateContent/{id}")
     public ApiResult<Void> updateGoodsContent(
-            @PathVariable Long id,
+            @PathVariable Integer id,
             @RequestBody GoodsContentDTO dto,
             @RequestHeader(value = "token", required = false) String token) {
 
@@ -151,7 +163,7 @@ public class GoodsController {
      */
     @PostMapping("/{id}/check")
     public ApiResult<Boolean> checkGoods(
-            @PathVariable Long id,
+            @PathVariable Integer id,
             @RequestBody CheckGoodsDTO dto) {
 
         goodsService.checkGoods(id, dto.getIscheck());

@@ -9,6 +9,7 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * <p>
@@ -159,4 +160,12 @@ public class Goods implements Serializable {
      */
     @TableField(value = "`order`")
     private Integer order;
+
+    // 前端传过来的分类 id 列表
+    @TableField(exist = false)
+    private List<Integer> categoryIds;
+
+    @TableField(exist = false)
+    private List<Category> categories;
+
 }

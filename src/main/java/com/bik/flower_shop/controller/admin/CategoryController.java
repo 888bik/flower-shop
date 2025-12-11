@@ -3,10 +3,12 @@ package com.bik.flower_shop.controller.admin;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.entity.Category;
 import com.bik.flower_shop.pojo.vo.CategoryTreeVO;
+import com.bik.flower_shop.pojo.vo.CategoryTypeVO;
 import com.bik.flower_shop.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,8 +27,10 @@ public class CategoryController {
      */
     @GetMapping("/{page}")
     public ApiResult<Map<String, Object>> getCategoriesList(@PathVariable int page,
-                                                            @RequestParam(required = false, defaultValue = "10") int limit) {
-        return ApiResult.ok(categoryService.listCategories(page, limit));
+                                                            @RequestParam(required = false, defaultValue = "10") int limit,
+                                                            @RequestParam(required = false) String type
+    ) {
+        return ApiResult.ok(categoryService.listCategories(page, limit, type));
     }
 
     /**

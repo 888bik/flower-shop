@@ -20,7 +20,7 @@ public class TokenService {
     private final ObjectMapper objectMapper;
 
     private static final String TOKEN_PREFIX = "mgr:token:";
-    private static final long TOKEN_TTL_SECONDS = 30 * 60;
+    private static final long TOKEN_TTL_SECONDS =3 * 60 * 60;
 
     public TokenService(StringRedisTemplate redis, ObjectMapper objectMapper) {
         this.redis = redis;

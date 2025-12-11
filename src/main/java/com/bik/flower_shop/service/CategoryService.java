@@ -3,8 +3,10 @@ package com.bik.flower_shop.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.bik.flower_shop.exception.BusinessException;
 import com.bik.flower_shop.mapper.CategoryMapper;
+import com.bik.flower_shop.mapper.CategoryTypeMapper;
 import com.bik.flower_shop.mapper.GoodsMapper;
 import com.bik.flower_shop.pojo.entity.Category;
+import com.bik.flower_shop.pojo.entity.CategoryType;
 import com.bik.flower_shop.pojo.vo.CategoryTreeVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,10 +25,34 @@ public class CategoryService {
 
     private final CategoryMapper categoryMapper;
     private final GoodsMapper goodsMapper;
+    private final CategoryTypeMapper typeMapper;
 
-    public Map<String, Object> listCategories(int page, int limit) {
+    public Map<String, Object> listCategories(int page, int limit, String type) {
 
-        List<Category> all = categoryMapper.selectList(null);
+        // 根据类型筛选
+        QueryWrapper<Category> query = new QueryWrapper<>();
+        if (type != null && !type.isEmpty()) {
+            query.eq("type", type);
+        }
+
+        List<Category> all = categoryMapper.selectList(query);
+
+        // 先收集所有 type code（假设 Category.getType() 返回 String code）
+        Set<String> typeCodes = all.stream()
+                .map(Category::getType)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        Map<String, CategoryType> typeMap;
+        if (!typeCodes.isEmpty()) {
+            List<CategoryType> types = Optional.ofNullable(typeMapper.selectList(
+                    new QueryWrapper<CategoryType>().in("code", typeCodes)
+            )).orElse(Collections.emptyList());
+            typeMap = types.stream().filter(Objects::nonNull)
+                    .collect(Collectors.toMap(CategoryType::getCode, t -> t, (a, b) -> a));
+        } else {
+            typeMap = Collections.emptyMap();
+        }
 
         // 转为 VO
         List<CategoryTreeVO> voList = all.stream().map(c -> {
@@ -38,6 +64,24 @@ public class CategoryService {
             vo.setCategoryId(c.getCategoryId());
             vo.setCreateTime(c.getCreateTime());
             vo.setUpdateTime(c.getUpdateTime());
+
+            // 如果 Category 有 type (code)，则尝试用 typeMap 映射到友好名称
+            try {
+                String code = c.getType();
+                if (code != null) {
+                    CategoryType ct = typeMap.get(code);
+                    if (ct != null) {
+                        vo.setType(ct.getName()); // 返回友好显示名
+                    } else {
+                        vo.setType(code); // fallback: 返回原 code
+                    }
+                } else {
+                    vo.setType(null);
+                }
+            } catch (Exception ignore) {
+                // 若 Category 没有 getType()，保持 null
+            }
+
             return vo;
         }).toList();
 
@@ -59,6 +103,7 @@ public class CategoryService {
                 }
             }
         }
+
         // 排序
         Comparator<CategoryTreeVO> comp = Comparator.comparing(
                 CategoryTreeVO::getOrder,
@@ -80,8 +125,6 @@ public class CategoryService {
         res.put("totalCount", total);
         return res;
     }
-
-
 
 
     private void sortRecursively(List<CategoryTreeVO> list, Comparator<CategoryTreeVO> comp) {

@@ -3,9 +3,10 @@ package com.bik.flower_shop.pojo.dto;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
- * 修改商品 DTO（精简字段）
+ *
  * @author bik
  */
 @Data
@@ -21,4 +22,5 @@ public class UpdateGoodsDTO {
     private Byte stockDisplay;
     private BigDecimal minPrice;
     private BigDecimal minOprice;
+    private List<Integer> categoryIds;
 }

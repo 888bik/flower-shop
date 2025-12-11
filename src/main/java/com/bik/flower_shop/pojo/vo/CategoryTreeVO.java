@@ -17,5 +17,6 @@ public class CategoryTreeVO {
     private Integer order;
     private Integer createTime;
     private Integer updateTime;
+    private String type;
     private List<CategoryTreeVO> children = new ArrayList<>();
 }

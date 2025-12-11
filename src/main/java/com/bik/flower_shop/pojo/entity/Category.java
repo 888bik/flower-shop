@@ -11,7 +11,7 @@ import java.io.Serializable;
 
 /**
  * <p>
- * 
+ *
  * </p>
  *
  * @author bik
@@ -50,4 +50,15 @@ public class Category implements Serializable {
      */
     @TableField(value = "`order`")
     private Integer order;
+
+    // 新增：分类类型，例如 "用途"、"品种"、"场景"
+    @TableField("type")
+    private String type;
+
+    @TableField("type_id")
+    private Integer typeId;
+
+    @TableField(exist = false)
+    private String typeName;
+
 }
