@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.ImageClassUpdateDTO;
 import com.bik.flower_shop.pojo.entity.ImageClass;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/admin/image_class")
 @RequiredArgsConstructor
+@AuthRequired(role = "admin")
 public class ImageClassController {
 
     private final ImageClassService imageClassService;

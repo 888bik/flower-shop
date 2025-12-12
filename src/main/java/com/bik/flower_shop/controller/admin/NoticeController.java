@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.pojo.dto.NoticeDTO;
 import com.bik.flower_shop.pojo.entity.Notice;
 import com.bik.flower_shop.service.NoticeService;
@@ -14,6 +15,7 @@ import java.util.Map;
  */
 @RequiredArgsConstructor
 @RestController
+@AuthRequired(role = "admin")
 @RequestMapping("/admin/notice")
 public class NoticeController {
 

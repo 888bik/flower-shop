@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.mapper.CategoryTypeMapper;
 import com.bik.flower_shop.pojo.entity.CategoryType;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
  * @author bik
  */
 @RestController
+@AuthRequired(role = "admin")
 @RequestMapping("/admin/category_type")
 @RequiredArgsConstructor
 public class CategoryTypeController {

@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.pojo.dto.RuleDTO;
 import com.bik.flower_shop.pojo.dto.StatusDTO;
 import com.bik.flower_shop.pojo.entity.Rule;
@@ -17,6 +18,7 @@ import java.util.Map;
  */
 @RestController
 @RequiredArgsConstructor
+@AuthRequired(role = "admin")
 @RequestMapping("/admin/rule")
 public class RuleController {
 

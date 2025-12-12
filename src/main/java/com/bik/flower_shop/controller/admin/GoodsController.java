@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.Goods;

@@ -13,7 +13,7 @@ import com.bik.flower_shop.utils.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import com.bik.flower_shop.service.impl.TokenService;
+import com.bik.flower_shop.service.TokenService;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
@@ -161,12 +161,12 @@ public class ManagerService {
 
         manager.setPassword(null);
 
-        return tokenService.createToken(manager);
+        return tokenService.createToken(manager, "admin");
     }
 
     // 退出登录
     public void logout(String token) {
-        tokenService.invalidateToken(token);
+        tokenService.invalidateToken(token, "admin");
     }
 
     // 修改当前登录用户密码（通过 token 获取 user）
@@ -176,7 +176,6 @@ public class ManagerService {
             throw new RuntimeException("非法token，请先登录！");
         }
 
-        // 为了拿到最新密码，从数据库读取用户
         Integer uid = mgrFromRedis.getId();
         Manager m = managerMapper.selectById(uid);
         if (m == null) {
@@ -192,10 +191,10 @@ public class ManagerService {
         m.setPassword(PasswordUtil.encode(newPassword));
         m.setUpdateTime((int) (System.currentTimeMillis() / 1000));
         managerMapper.updateById(m);
-        // 使当前 token 失效
-        tokenService.invalidateToken(token);
+        tokenService.invalidateToken(token, "admin");
         return true;
     }
+
 
     public Map<String, Object> getInfoByToken(String token) {
         Manager mgrFromRedis = tokenService.getManagerByToken(token);

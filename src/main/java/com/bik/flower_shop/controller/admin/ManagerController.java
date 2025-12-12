@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.LoginDTO;
 import com.bik.flower_shop.pojo.dto.UpdateManagerDTO;
@@ -16,8 +17,8 @@ import java.util.Map;
  * @author bik
  */
 @RestController
-@RequestMapping("/admin")
 @RequiredArgsConstructor
+@AuthRequired(role = "admin")
 public class ManagerController {
 
 
@@ -45,6 +46,7 @@ public class ManagerController {
     /**
      * 获取管理员列表
      */
+    @AuthRequired(role = "admin")
     @GetMapping("/manager/{page}")
     public ApiResult<Map<String, Object>> getManagerList(
             @PathVariable Integer page,
@@ -57,6 +59,7 @@ public class ManagerController {
     /**
      * 创建管理员
      */
+    @AuthRequired(role = "admin")
     @PostMapping("/manager")
     public ApiResult<Manager> save(@RequestBody Manager manager) {
         Manager created = managerService.createManager(manager);
@@ -67,6 +70,7 @@ public class ManagerController {
     /**
      * 获取管理员信息和权限
      */
+    @AuthRequired(role = "admin")
     @PostMapping("/getinfo")
     public ApiResult<Map<String, Object>> getInfo(@RequestHeader("token") String token) {
         // 根据 token 获取管理员详细信息（包含 role, menus, ruleNames）
@@ -77,6 +81,7 @@ public class ManagerController {
     /**
      * 修改密码
      */
+    @AuthRequired(role = "admin")
     @PostMapping("/updatepassword")
     public ApiResult<String> updatePassword(
             @RequestHeader("token") String token,
@@ -96,6 +101,7 @@ public class ManagerController {
     /**
      * 修改管理员状态
      */
+    @AuthRequired(role = "admin")
     @PostMapping("/manager/{id}/update_status")
     public ApiResult<Boolean> updateStatus(
             @PathVariable Integer id,
@@ -110,6 +116,7 @@ public class ManagerController {
     /**
      * 删除管理员
      */
+    @AuthRequired(role = "admin")
     @PostMapping("/manager/{id}/delete")
     public ApiResult<Boolean> deleteManager(
             @PathVariable Integer id,
@@ -122,9 +129,9 @@ public class ManagerController {
     /**
      * 修改管理员信息
      */
+    @AuthRequired(role = "admin")
     @PostMapping("/manager/{id}")
     public ApiResult<Boolean> updateManager(
-            @RequestHeader("token") String token,
             @PathVariable("id") Integer id,
             @RequestBody UpdateManagerDTO dto) {
 

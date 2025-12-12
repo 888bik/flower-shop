@@ -1,6 +1,6 @@
 package com.bik.flower_shop.config;
 
-import com.bik.flower_shop.interceptor.AuthInterceptor;
+import com.bik.flower_shop.interceptor.TokenInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.*;
@@ -12,7 +12,7 @@ import org.springframework.web.servlet.config.annotation.*;
 @RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private final AuthInterceptor authInterceptor;
+    private final TokenInterceptor tokenInterceptor;
 
 
     @Override
@@ -30,11 +30,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/admin/**")
+        registry.addInterceptor(tokenInterceptor)
+                .addPathPatterns("/**")
                 .excludePathPatterns(
                         "/admin/login",
-                        "/admin/goods/*",
+                        "/user/login",
+                        "/user/register",
                         "/error",
                         "/swagger-resources/**",
                         "/v2/api-docs/**",

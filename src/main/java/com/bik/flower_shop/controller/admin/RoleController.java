@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.RoleDTO;
 import com.bik.flower_shop.pojo.dto.SetRoleRulesDTO;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequiredArgsConstructor
+@AuthRequired(role = "admin")
 @RequestMapping("/admin/role")
 public class RoleController {
 

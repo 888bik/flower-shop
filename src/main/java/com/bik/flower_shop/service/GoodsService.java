@@ -350,33 +350,38 @@ public class GoodsService {
         int page = dto.getPage() == null || dto.getPage() < 1 ? 1 : dto.getPage();
         int limit = dto.getLimit() == null || dto.getLimit() < 1 ? 10 : dto.getLimit();
 
-        // 1. 多分类筛选
+        // --- 1. 多分类筛选（通过 goods_category 关联表） ---
         List<Integer> filterGoodsIds = null;
         if (dto.getCategoryIds() != null && !dto.getCategoryIds().isEmpty()) {
+            // 假设 goodsCategoryMapper.selectGoodsIdsByCategoryIds 返回 List<Integer>
             filterGoodsIds = Optional.ofNullable(
                     goodsCategoryMapper.selectGoodsIdsByCategoryIds(dto.getCategoryIds())
             ).orElse(Collections.emptyList());
 
+            // 如果没有任何商品匹配这些分类，直接返回空结果（性能优先）
             if (filterGoodsIds.isEmpty()) {
-                return Map.of(
-                        "list", Collections.emptyList(),
-                        "totalCount", 0L,
-                        "cates", categoryMapper.selectList(null)
-                );
+                List<Category> cates = Optional.ofNullable(categoryMapper.selectList(null)).orElse(Collections.emptyList());
+                Map<String, Object> emptyRes = new HashMap<>();
+                emptyRes.put("list", Collections.emptyList());
+                emptyRes.put("page", page);
+                emptyRes.put("pageSize", limit);
+                emptyRes.put("totalCount", 0L);
+                emptyRes.put("cates", cates);
+                return emptyRes;
             }
         }
 
-        // 2. 构造商品查询 Wrapper
+        // --- 2. 构造查询条件 ---
         QueryWrapper<Goods> wrapper = new QueryWrapper<>();
 
-        // 分类过滤
+        // 分类过滤（优先使用 filterGoodsIds）
         if (filterGoodsIds != null) {
             wrapper.in("id", filterGoodsIds);
         } else if (dto.getCategoryId() != null) {
             wrapper.eq("category_id", dto.getCategoryId());
         }
 
-        // *** 关键逻辑：删除状态筛选 ***
+        // 删除状态筛选
         if ("delete".equals(dto.getTab())) {
             wrapper.isNotNull("delete_time");
         } else {
@@ -393,43 +398,66 @@ public class GoodsService {
             }
         }
 
-        // 搜索标题
+        // 标题搜索
         if (dto.getTitle() != null && !dto.getTitle().isBlank()) {
             wrapper.like("title", dto.getTitle().trim());
         }
 
         wrapper.orderByDesc("id");
 
-        // 3. 分页查询
+        // --- 3. 显式总数计数（便于调试 & 保证准确） ---
+        long total = goodsMapper.selectCount(wrapper).longValue();
+
+        // 如果 total == 0，快速返回
+        if (total == 0) {
+            List<Category> cates = Optional.ofNullable(categoryMapper.selectList(null)).orElse(Collections.emptyList());
+            return Map.of(
+                    "list", Collections.emptyList(),
+                    "page", page,
+                    "pageSize", limit,
+                    "totalCount", 0L,
+                    "cates", cates
+            );
+        }
+
+        // --- 4. 分页查询主数据 ---
         Page<Goods> pageObj = new Page<>(page, limit);
         Page<Goods> goodsPage = goodsMapper.selectPage(pageObj, wrapper);
         List<Goods> goodsList = Optional.ofNullable(goodsPage.getRecords()).orElse(Collections.emptyList());
 
-        if (goodsList.isEmpty()) {
-            return Map.of(
-                    "list", Collections.emptyList(),
-                    "totalCount", goodsPage.getTotal(),
-                    "cates", categoryMapper.selectList(null)
-            );
-        }
-
+        // --- 5. 批量查询所有关联数据（一次性） ---
         List<Integer> goodsIds = goodsList.stream().map(Goods::getId).collect(Collectors.toList());
 
-        // 4. 批量查询关联
-        List<GoodsBanner> banners = goodsBannerMapper.selectList(new QueryWrapper<GoodsBanner>().in("goods_id", goodsIds));
-        List<GoodsAttrs> attrs = goodsAttrsMapper.selectList(new QueryWrapper<GoodsAttrs>().in("goods_id", goodsIds));
-        List<GoodsSkus> skus = goodsSkusMapper.selectList(new QueryWrapper<GoodsSkus>().in("goods_id", goodsIds));
-        List<GoodsSkusCard> cards = goodsSkusCardMapper.selectList(new QueryWrapper<GoodsSkusCard>().in("goods_id", goodsIds));
+        List<GoodsBanner> banners = Optional.ofNullable(
+                goodsBannerMapper.selectList(new QueryWrapper<GoodsBanner>().in("goods_id", goodsIds))
+        ).orElse(Collections.emptyList());
+
+        List<GoodsAttrs> attrs = Optional.ofNullable(
+                goodsAttrsMapper.selectList(new QueryWrapper<GoodsAttrs>().in("goods_id", goodsIds))
+        ).orElse(Collections.emptyList());
+
+        List<GoodsSkus> skus = Optional.ofNullable(
+                goodsSkusMapper.selectList(new QueryWrapper<GoodsSkus>().in("goods_id", goodsIds))
+        ).orElse(Collections.emptyList());
+
+        List<GoodsSkusCard> cards = Optional.ofNullable(
+                goodsSkusCardMapper.selectList(new QueryWrapper<GoodsSkusCard>().in("goods_id", goodsIds))
+        ).orElse(Collections.emptyList());
 
         List<GoodsSkusCardValue> cardValues = Collections.emptyList();
         if (!cards.isEmpty()) {
-            List<Integer> cardIds = cards.stream().map(GoodsSkusCard::getId).collect(Collectors.toList());
-            cardValues = goodsSkusCardValueMapper.selectList(new QueryWrapper<GoodsSkusCardValue>().in("goods_skus_card_id", cardIds));
+            List<Integer> cardIds = cards.stream().map(GoodsSkusCard::getId).filter(Objects::nonNull).collect(Collectors.toList());
+            cardValues = Optional.ofNullable(
+                    goodsSkusCardValueMapper.selectList(new QueryWrapper<GoodsSkusCardValue>().in("goods_skus_card_id", cardIds))
+            ).orElse(Collections.emptyList());
         }
 
-        List<GoodsCategory> goodsCats = goodsCategoryMapper.selectByGoodsIds(goodsIds);
+        // 如果你用了 goods_category 关联表，则获取这些商品对应的 category 关联关系
+        List<GoodsCategory> goodsCats = Optional.ofNullable(
+                goodsCategoryMapper.selectByGoodsIds(goodsIds)
+        ).orElse(Collections.emptyList());
 
-        // 5. 构造数据映射
+        // --- 6. 构造映射以便高效合并 ---
         Map<Integer, List<GoodsBanner>> bannerMap = groupBy(banners, GoodsBanner::getGoodsId);
         Map<Integer, List<GoodsAttrs>> attrsMap = groupBy(attrs, GoodsAttrs::getGoodsId);
 
@@ -449,19 +477,25 @@ public class GoodsService {
         Map<Integer, List<GoodsSkusCard>> cardsMap = groupBy(cards, GoodsSkusCard::getGoodsId);
         Map<Integer, List<GoodsSkusCardValue>> cardValuesMap = groupBy(cardValues, GoodsSkusCardValue::getGoodsSkusCardId);
 
-        // 分类映射
+        // goods -> [categoryId,...]
         Map<Integer, List<Integer>> goodsToCatIds = goodsCats.stream()
                 .collect(Collectors.groupingBy(GoodsCategory::getGoodsId,
                         Collectors.mapping(GoodsCategory::getCategoryId, Collectors.toList())));
 
-        Set<Integer> allCatIds = goodsCats.stream().map(GoodsCategory::getCategoryId).collect(Collectors.toSet());
-        Map<Integer, Category> catMap = allCatIds.isEmpty() ? Collections.emptyMap() :
-                categoryMapper.selectBatchIds(new ArrayList<>(allCatIds))
-                        .stream().collect(Collectors.toMap(Category::getId, c -> c));
+        // 批量查询所有被引用的 category（去重）
+        Set<Integer> allCatIds = goodsCats.stream()
+                .map(GoodsCategory::getCategoryId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Integer, Category> catMap = allCatIds.isEmpty() ? Collections.emptyMap()
+                : categoryMapper.selectBatchIds(new ArrayList<>(allCatIds)).stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(Category::getId, c -> c, (a, b) -> a));
 
-        List<Category> cates = categoryMapper.selectList(null);
+        // 同时给前端返回所有一级分类（兼容你现有）
+        List<Category> cates = Optional.ofNullable(categoryMapper.selectList(null)).orElse(Collections.emptyList());
 
-        // 6. 构建返回 VO
+        // --- 7. 构造返回 VO 列表 ---
         List<GoodsVO> result = new ArrayList<>();
         for (Goods g : goodsList) {
             GoodsVO vo = new GoodsVO();
@@ -473,7 +507,7 @@ public class GoodsService {
             vo.setGoodsAttrs(attrsMap.getOrDefault(g.getId(), List.of()));
             vo.setGoodsSkus(skusMap.getOrDefault(g.getId(), List.of()));
 
-            // SKU Cards
+            // skus card + values
             List<GoodsSkusCardVO> voCards = new ArrayList<>();
             for (GoodsSkusCard card : cardsMap.getOrDefault(g.getId(), List.of())) {
                 GoodsSkusCardVO cv = new GoodsSkusCardVO();
@@ -483,12 +517,12 @@ public class GoodsService {
             }
             vo.setGoodsSkusCard(voCards);
 
-            // 分类
+            // 多分类注入
             List<Integer> catIds = goodsToCatIds.getOrDefault(g.getId(), List.of());
             vo.setCategoryIds(catIds);
             vo.setCategories(catIds.stream().map(catMap::get).filter(Objects::nonNull).collect(Collectors.toList()));
 
-            // 兼容单分类
+            // 兼容旧单分类字段
             if ((vo.getCategory() == null || vo.getCategory().getId() == null) && !vo.getCategories().isEmpty()) {
                 vo.setCategory(vo.getCategories().get(0));
             }
@@ -496,11 +530,15 @@ public class GoodsService {
             result.add(vo);
         }
 
-        return Map.of(
-                "list", result,
-                "totalCount", goodsPage.getTotal(),
-                "cates", cates
-        );
+        // --- 8. 返回结构（包含分页信息） ---
+        Map<String, Object> data = new HashMap<>();
+        data.put("list", result);
+        data.put("page", page);
+        data.put("pageSize", limit);
+        data.put("totalCount", total);
+        data.put("cates", cates);
+
+        return data;
     }
 
 

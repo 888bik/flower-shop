@@ -62,7 +62,7 @@ public class User implements Serializable {
      * 状态：0禁用1启用
      */
     @TableField("status")
-    private Boolean status;
+    private Byte status;
 
     /**
      * 微信openid
@@ -123,4 +123,7 @@ public class User implements Serializable {
      */
     @TableField("p2")
     private Integer p2;
+
+    @TableField(exist = false)
+    private String role = "user";
 }

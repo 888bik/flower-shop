@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.GoodsSkusCard;
@@ -21,6 +22,7 @@ import java.util.Map;
  * Time: 21:13
  */
 @RestController
+@AuthRequired(role = "admin")
 @RequestMapping("/admin/goods_skus_card")
 @RequiredArgsConstructor
 public class GoodsSkusController {

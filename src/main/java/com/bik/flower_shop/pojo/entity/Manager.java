@@ -74,4 +74,7 @@ public class Manager implements Serializable {
     @TableField("super")
     private Boolean superAdmin;
 
+    // 固定为管理员
+    private String role = "admin";
+
 }

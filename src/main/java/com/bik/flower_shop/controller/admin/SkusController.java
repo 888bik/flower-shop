@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.SkusDTO;
 import com.bik.flower_shop.pojo.dto.StatusDTO;
@@ -17,6 +18,7 @@ import java.util.Map;
  */
 @RestController
 @RequiredArgsConstructor
+@AuthRequired(role = "admin")
 @RequestMapping("/admin/skus")
 public class SkusController {
 

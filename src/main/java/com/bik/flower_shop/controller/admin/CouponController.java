@@ -1,5 +1,6 @@
 package com.bik.flower_shop.controller.admin;
 
+import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.pojo.dto.CouponDTO;
 import com.bik.flower_shop.pojo.dto.StatusDTO;
 import com.bik.flower_shop.pojo.entity.Coupon;
@@ -16,6 +17,7 @@ import java.util.Map;
  */
 @RestController
 @RequiredArgsConstructor
+@AuthRequired(role = "admin")
 @RequestMapping("/admin/coupon")
 public class CouponController {
 

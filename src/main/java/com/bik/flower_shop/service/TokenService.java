@@ -1,16 +1,19 @@
-package com.bik.flower_shop.service.impl;
+package com.bik.flower_shop.service;
 
 import com.bik.flower_shop.pojo.entity.Manager;
+import com.bik.flower_shop.pojo.entity.User;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
+ * TokenService - 支持多角色 token（admin / user 等）
  * @author bik
  */
 @Service
@@ -18,62 +21,96 @@ public class TokenService {
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
+    private static final long TOKEN_TTL_SECONDS = 6 * 60 * 60;
 
-    private static final String TOKEN_PREFIX = "mgr:token:";
-    private static final long TOKEN_TTL_SECONDS =3 * 60 * 60;
+    // 可扩展的前缀映射，方便未来增加其它角色
+    private static final Map<String, String> PREFIX_MAP = new ConcurrentHashMap<>();
+    static {
+        PREFIX_MAP.put("admin", "mgr:token:");
+        PREFIX_MAP.put("user", "user:token:");
+    }
 
     public TokenService(StringRedisTemplate redis, ObjectMapper objectMapper) {
         this.redis = redis;
         this.objectMapper = objectMapper;
     }
 
+    private String getPrefix(String role) {
+        return PREFIX_MAP.getOrDefault(role, role + ":token:");
+    }
+
     /**
-     * 生成 token 并把 Manager（脱敏后的）信息保存到 Redis
+     * 创建 token 并把序列化后的 account 保存到 Redis（带前缀区分角色）
+     * @param account 管理员或用户对象（已脱敏）
+     * @param role 'admin' 或 'user' 等
+     * @return token 字符串
      */
-    public String createToken(Manager manager) {
+    public String createToken(Object account, String role) {
         String token = UUID.randomUUID().toString().replace("-", "");
+        String prefix = getPrefix(role);
         try {
-            // 注意：不要把敏感字段（如 password）写入 Redis 。示例中我们假设 manager 对象里不含明文密码或已脱敏。
-            String json = objectMapper.writeValueAsString(manager);
-            redis.opsForValue().set(TOKEN_PREFIX + token, json, TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
+            String json = objectMapper.writeValueAsString(account);
+            redis.opsForValue().set(prefix + token, json, TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("序列化 Manager 失败", e);
+            throw new RuntimeException("序列化失败", e);
         }
         return token;
     }
 
     /**
-     * 根据 token 获取 Manager 对象，若不存在返回 null。
-     * 同时实现滑动过期：刷新 TTL。
+     * 类型安全的读取 token -> 反序列化为指定类型
+     * @param token token 字符串
+     * @param role 角色 'admin' / 'user'
+     * @param clazz 想要反序列化成的类型，如 Manager.class
+     * @param <T> 返回类型
+     * @return 反序列化对象或 null（不存在或反序列化失败）
      */
-    public Manager getManagerByToken(String token) {
+    public <T> T getByToken(String token, String role, Class<T> clazz) {
         if (token == null || token.isBlank()) return null;
-        String key = TOKEN_PREFIX + token;
+        String prefix = getPrefix(role);
+        String key = prefix + token;
         String json = redis.opsForValue().get(key);
         if (json == null) return null;
         try {
-            // 刷新 TTL（滑动过期）
+            // 滑动过期：刷新 TTL
             redis.expire(key, TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
-            return objectMapper.readValue(json, Manager.class);
+            return objectMapper.readValue(json, clazz);
         } catch (Exception e) {
             return null;
         }
     }
 
     /**
-     * 使 token 失效（登出/强制下线）
+     * 兼容旧代码：非泛型版（会返回 Manager 或 User 对象），推荐使用泛型版。
      */
-    public void invalidateToken(String token) {
+    public Object getByToken(String token, String role) {
+        if ("admin".equals(role)) {
+            return getByToken(token, role, Manager.class);
+        } else {
+            return getByToken(token, role, User.class);
+        }
+    }
+
+    public boolean tokenExists(String token, String role) {
+        if (token == null || token.isBlank()) {
+            return false;
+        }
+        return redis.hasKey(getPrefix(role) + token);
+    }
+
+    public void invalidateToken(String token, String role) {
         if (token == null || token.isBlank()) {
             return;
         }
-        redis.delete(TOKEN_PREFIX + token);
+        redis.delete(getPrefix(role) + token);
     }
 
-    /**
-     * 判断 token 是否存在
-     */
-    public boolean tokenExists(String token) {
-        return redis.hasKey(TOKEN_PREFIX + token);
+    // 辅助方法（更语义化）
+    public Manager getManagerByToken(String token) {
+        return getByToken(token, "admin", Manager.class);
+    }
+
+    public User getUserByToken(String token) {
+        return getByToken(token, "user", User.class);
     }
 }
