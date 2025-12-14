@@ -9,6 +9,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * @author bik
@@ -25,7 +26,21 @@ public class TokenInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
 
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
+        String method = request.getMethod();
+        String uri = request.getRequestURI();
+        // 简单日志，便于远端调试：打印方法、URI 和 token header（若存在）
+        System.out.println("TokenInterceptor -> " + method + " " + uri + " Origin:" + request.getHeader("Origin") + " tokenHeader:" + request.getHeader("token"));
+
+        // 允许预检请求通过（非常重要）
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
+
+        // 如果是注册、登录等无需鉴权的接口，直接放行（兼容带 or 不带 /api 前缀的情况）
+        // 你可以根据实际业务把这些路径集中到配置或常量中
+        if (uri.endsWith("/user/register") || uri.endsWith("/user/login") || uri.contains("/admin/login")) {
+            return true;
+        }
 
         String token = request.getHeader("token");
         if (token == null || token.isBlank()) {
@@ -34,10 +49,10 @@ public class TokenInterceptor implements HandlerInterceptor {
         }
 
         String role = "user";
-        if (handler instanceof HandlerMethod method) {
-            AuthRequired auth = method.getMethodAnnotation(AuthRequired.class);
+        if (handler instanceof HandlerMethod methodHandler) {
+            AuthRequired auth = methodHandler.getMethodAnnotation(AuthRequired.class);
             if (auth == null) {
-                auth = method.getBeanType().getAnnotation(AuthRequired.class);
+                auth = methodHandler.getBeanType().getAnnotation(AuthRequired.class);
             }
             if (auth != null) {
                 role = auth.role();

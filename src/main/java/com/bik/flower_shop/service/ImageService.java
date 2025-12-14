@@ -91,7 +91,9 @@ public class ImageService {
 
         try {
             for (MultipartFile file : files) {
-                if (file == null || file.isEmpty()) continue;
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
 
                 if (file.getSize() > maxBytes) {
                     throw new BusinessException("文件过大，最大允许 " + maxFileSizeMB + "MB");
@@ -113,7 +115,9 @@ public class ImageService {
                     if (compressed != null && compressed.exists() && compressed.length() < tmpFile.length()) {
                         fileToUpload = compressed;
                     } else {
-                        if (compressed != null) compressed.delete();
+                        if (compressed != null) {
+                            compressed.delete();
+                        }
                     }
                 }
 
@@ -200,15 +204,6 @@ public class ImageService {
             return null;
         }
     }
-
-//    private void deleteQuietly(File f) {
-//        try {
-//            if (f != null && f.exists()) {
-//                f.delete();
-//            }
-//        } catch (Exception ignored) {
-//        }
-//    }
 
     public boolean deleteImagesByIds(List<Integer> ids) {
         if (ids == null || ids.isEmpty()) {

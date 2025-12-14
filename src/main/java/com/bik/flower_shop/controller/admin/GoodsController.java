@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/admin/goods")
 @RequiredArgsConstructor
+@AuthRequired(role = "admin")
 public class GoodsController {
 
     private final GoodsService goodsService;

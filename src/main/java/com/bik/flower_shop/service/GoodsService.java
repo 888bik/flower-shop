@@ -406,7 +406,7 @@ public class GoodsService {
         wrapper.orderByDesc("id");
 
         // --- 3. 显式总数计数（便于调试 & 保证准确） ---
-        long total = goodsMapper.selectCount(wrapper).longValue();
+        long total = goodsMapper.selectCount(wrapper);
 
         // 如果 total == 0，快速返回
         if (total == 0) {

@@ -17,8 +17,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/admin/**")
-                // 允许带凭证时，不能使用 "*"
+        registry.addMapping("/**")
                 // 可以指定前端域名，或者使用 allowedOriginPatterns 支持通配符
                 .allowedOriginPatterns("http://127.0.0.1:3000", "http://127.0.0.1:5173")
                 .allowedMethods("*")
@@ -34,8 +33,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/**")
                 .excludePathPatterns(
                         "/admin/login",
+                        "/admin/goods/*",
+                        "/mall/**",
                         "/user/login",
                         "/user/register",
+                        "/api/user/register",
+                        "/**/user/register",
                         "/error",
                         "/swagger-resources/**",
                         "/v2/api-docs/**",

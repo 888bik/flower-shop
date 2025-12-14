@@ -66,11 +66,15 @@ public class TokenService {
      * @return 反序列化对象或 null（不存在或反序列化失败）
      */
     public <T> T getByToken(String token, String role, Class<T> clazz) {
-        if (token == null || token.isBlank()) return null;
+        if (token == null || token.isBlank()) {
+            return null;
+        }
         String prefix = getPrefix(role);
         String key = prefix + token;
         String json = redis.opsForValue().get(key);
-        if (json == null) return null;
+        if (json == null) {
+            return null;
+        }
         try {
             // 滑动过期：刷新 TTL
             redis.expire(key, TOKEN_TTL_SECONDS, TimeUnit.SECONDS);

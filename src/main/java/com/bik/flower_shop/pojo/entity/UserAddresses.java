@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,14 +12,13 @@ import java.io.Serializable;
 
 /**
  * <p>
- * 
+ *
  * </p>
  *
  * @author bik
  * @since 2025-12-04
  */
-@Getter
-@Setter
+@Data
 @TableName("user_addresses")
 public class UserAddresses implements Serializable {
 
@@ -83,4 +83,9 @@ public class UserAddresses implements Serializable {
 
     @TableField("update_time")
     private Integer updateTime;
+
+    //默认地址
+    @TableField("is_default")
+    private Byte isDefault;
+
 }

@@ -19,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequiredArgsConstructor
 @AuthRequired(role = "admin")
+@RequestMapping("/admin")
 public class ManagerController {
 
 

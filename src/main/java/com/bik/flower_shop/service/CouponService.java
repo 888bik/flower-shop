@@ -3,6 +3,7 @@ package com.bik.flower_shop.service;
 import com.bik.flower_shop.mapper.CouponMapper;
 import com.bik.flower_shop.pojo.dto.CouponDTO;
 import com.bik.flower_shop.pojo.entity.Coupon;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -11,14 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * @author bik
+ */
+@RequiredArgsConstructor
 @Service
 public class CouponService {
 
     private final CouponMapper couponMapper;
-
-    public CouponService(CouponMapper couponMapper) {
-        this.couponMapper = couponMapper;
-    }
 
     // 新增优惠券
     public Coupon createCoupon(CouponDTO dto) {

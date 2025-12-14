@@ -9,6 +9,6 @@ import lombok.Data;
 public class RegisterDTO {
     private String username;
     private String password;
-    private String repassword;
+    private String confirmPassword;
     private String email;
 }
