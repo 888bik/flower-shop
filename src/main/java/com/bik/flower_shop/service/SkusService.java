@@ -92,8 +92,8 @@ public class SkusService extends ServiceImpl<SkusMapper, Skus> {
             item.put("id", s.getId());
             item.put("name", s.getName());
             item.put("type", s.getType());
-            item.put("create_time", TimeUtils.format(s.getCreateTime()));
-            item.put("update_time", TimeUtils.format(s.getUpdateTime()));
+            item.put("create_time", TimeUtils.formatDate(s.getCreateTime()));
+            item.put("update_time", TimeUtils.formatDate(s.getUpdateTime()));
             item.put("status", s.getStatus());
             item.put("order", s.getOrder());
             item.put("defaults", s.getDefaults());

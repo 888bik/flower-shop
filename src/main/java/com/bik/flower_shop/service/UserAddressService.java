@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.bik.flower_shop.mapper.UserAddressesMapper;
 import com.bik.flower_shop.pojo.dto.AddressCreateDTO;
+import com.bik.flower_shop.pojo.dto.AddressListVO;
 import com.bik.flower_shop.pojo.dto.AddressUpdateDTO;
 import com.bik.flower_shop.pojo.entity.UserAddresses;
 import com.bik.flower_shop.pojo.vo.AddressVO;
@@ -24,12 +25,18 @@ public class UserAddressService {
 
     private final UserAddressesMapper mapper;
 
-    public List<AddressVO> listByUser(Integer userId) {
+    public AddressListVO listByUser(Integer userId) {
         List<UserAddresses> list = mapper.selectList(
                 new LambdaQueryWrapper<UserAddresses>().eq(UserAddresses::getUserId, userId)
                         .orderByDesc(UserAddresses::getIsDefault).orderByDesc(UserAddresses::getLastUsedTime)
         );
-        return list.stream().map(this::toVO).collect(Collectors.toList());
+        List<AddressVO> voList = list.stream().map(this::toVO).collect(Collectors.toList());
+
+        AddressListVO result = new AddressListVO();
+        result.setList(voList);
+        result.setTotalCount(voList.size());
+
+        return result;
     }
 
     public AddressVO getById(Integer userId, Integer id) {
@@ -49,15 +56,21 @@ public class UserAddressService {
         e.setZip(dto.getZip());
         e.setName(dto.getName());
         e.setPhone(dto.getPhone());
-        e.setIsDefault(dto.getIsDefault());
+        boolean isDefault = Boolean.TRUE.equals(dto.getIsDefault());
+        e.setIsDefault(isDefault ? (byte) 1 : (byte) 0);
         int now = (int) Instant.now().getEpochSecond();
         e.setCreateTime(now);
         e.setUpdateTime(now);
 
-        if (dto.getIsDefault() != null && dto.getIsDefault() == 1) {
-            // 将该用户其他地址设为非默认
-            mapper.update(null, new UpdateWrapper<UserAddresses>()
-                    .lambda().eq(UserAddresses::getUserId, userId).set(UserAddresses::getIsDefault, 0));
+        // 如果设为默认，先清空其他默认地址
+        if (isDefault) {
+            mapper.update(
+                    null,
+                    new UpdateWrapper<UserAddresses>()
+                            .lambda()
+                            .eq(UserAddresses::getUserId, userId)
+                            .set(UserAddresses::getIsDefault, 0)
+            );
         }
         mapper.insert(e);
     }
@@ -75,12 +88,19 @@ public class UserAddressService {
         exist.setZip(dto.getZip());
         exist.setName(dto.getName());
         exist.setPhone(dto.getPhone());
-        exist.setIsDefault(dto.getIsDefault());
         exist.setUpdateTime((int) Instant.now().getEpochSecond());
+        if (dto.getIsDefault() != null) {
+            exist.setIsDefault(dto.getIsDefault() ? (byte) 1 : (byte) 0);
+        }
 
-        if (dto.getIsDefault() != null && dto.getIsDefault() == 1) {
-            mapper.update(null, new UpdateWrapper<UserAddresses>()
-                    .lambda().eq(UserAddresses::getUserId, userId).set(UserAddresses::getIsDefault, 0));
+        if (Boolean.TRUE.equals(dto.getIsDefault())) {
+            mapper.update(
+                    null,
+                    new UpdateWrapper<UserAddresses>()
+                            .lambda()
+                            .eq(UserAddresses::getUserId, userId)
+                            .set(UserAddresses::getIsDefault, 0)
+            );
         }
         mapper.updateById(exist);
     }

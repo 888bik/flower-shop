@@ -40,9 +40,9 @@ public class UserController {
      * 用户登录
      */
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ApiResult<Map<String, String>> login(@RequestBody LoginDTO dto) {
+    public ApiResult<String> login(@RequestBody LoginDTO dto) {
         String token = userService.login(dto.getUsername(), dto.getPassword());
-        return ApiResult.ok(Map.of("token", token));
+        return ApiResult.ok(token);
     }
 
     /**

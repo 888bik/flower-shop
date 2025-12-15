@@ -1,7 +1,7 @@
 package com.bik.flower_shop.controller.admin;
 
 import com.bik.flower_shop.annotation.AuthRequired;
-import com.bik.flower_shop.pojo.dto.CouponDTO;
+import com.bik.flower_shop.pojo.dto.CouponAdminDTO;
 import com.bik.flower_shop.pojo.dto.StatusDTO;
 import com.bik.flower_shop.pojo.entity.Coupon;
 import com.bik.flower_shop.service.CouponService;
@@ -9,7 +9,6 @@ import com.bik.flower_shop.common.ApiResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.Map;
 
 /**
@@ -19,7 +18,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @AuthRequired(role = "admin")
 @RequestMapping("/admin/coupon")
-public class CouponController {
+public class CouponAdminController {
 
     private final CouponService couponService;
 
@@ -27,7 +26,7 @@ public class CouponController {
      * 新增优惠券
      */
     @PostMapping
-    public ApiResult<Coupon> createCoupon(@RequestBody CouponDTO dto) {
+    public ApiResult<Coupon> createCoupon(@RequestBody CouponAdminDTO dto) {
         Coupon coupon = couponService.createCoupon(dto);
         return ApiResult.ok(coupon);
     }
@@ -36,7 +35,7 @@ public class CouponController {
      * 修改优惠券
      */
     @PostMapping("/{id}")
-    public ApiResult<Boolean> updateCoupon(@PathVariable Integer id, @RequestBody CouponDTO dto) {
+    public ApiResult<Boolean> updateCoupon(@PathVariable Integer id, @RequestBody CouponAdminDTO dto) {
         System.out.println("dto = " + dto);
         boolean success = couponService.updateCoupon(id, dto);
         return ApiResult.ok(success);

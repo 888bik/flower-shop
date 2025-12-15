@@ -1,16 +1,15 @@
 package com.bik.flower_shop.pojo.dto;
 
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 
+
 /**
- * 新增/修改优惠券请求参数
+ * @author bik
  */
 @Data
-public class CouponDTO {
+public class CouponAdminDTO {
     private String name;
     private Byte type;
     private BigDecimal value;

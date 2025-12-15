@@ -18,5 +18,5 @@ public class AddressCreateDTO {
     @NotBlank private String name;
     @NotBlank @Pattern(regexp = "^1[3-9]\\d{9}$") private String phone;
     // 0 or 1
-    private Byte isDefault = 0;
+    private Boolean isDefault;
 }

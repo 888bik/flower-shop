@@ -37,6 +37,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/mall/**",
                         "/user/login",
                         "/user/register",
+                        "/user/coupon/all",
                         "/api/user/register",
                         "/**/user/register",
                         "/error",

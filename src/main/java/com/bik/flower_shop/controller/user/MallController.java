@@ -18,7 +18,7 @@ import java.util.Map;
  * @author bik
  */
 @RestController
-@RequestMapping("/user/mall")
+@RequestMapping("/mall")
 @RequiredArgsConstructor
 public class MallController {
 
@@ -49,6 +49,4 @@ public class MallController {
         List<Category> categories = mallService.listCategories(type, parentId, status);
         return ApiResult.ok(categories);
     }
-
-
 }

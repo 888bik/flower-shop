@@ -30,9 +30,19 @@ public class AreaController {
     private final SysDistrictMapper districtMapper;
     private final SysAreaMapper areaMapper;
 
+
+    @GetMapping
+    public ApiResult<List<SysArea>> areas() {
+        return ApiResult.ok(areaMapper.selectList(null));
+    }
+
     @GetMapping("/provinces")
-    public ApiResult<List<SysProvince>> provinces() {
-        return ApiResult.ok(provinceMapper.selectList(null));
+    public ApiResult<List<SysProvince>> provinces(@RequestParam(required = false) Integer areaId) {
+        LambdaQueryWrapper<SysProvince> qw = new LambdaQueryWrapper<>();
+        if (areaId != null) {
+            qw.eq(SysProvince::getSysAreaId, areaId);
+        }
+        return ApiResult.ok(provinceMapper.selectList(qw));
     }
 
     @GetMapping("/cities")
@@ -43,10 +53,5 @@ public class AreaController {
     @GetMapping("/districts")
     public ApiResult<List<SysDistrict>> districts(@RequestParam Integer cityId) {
         return ApiResult.ok(districtMapper.selectList(new LambdaQueryWrapper<SysDistrict>().eq(SysDistrict::getSysCityId, cityId)));
-    }
-
-    @GetMapping
-    public ApiResult<List<SysArea>> areas() {
-        return ApiResult.ok(areaMapper.selectList(null));
     }
 }

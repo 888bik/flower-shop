@@ -1,10 +1,17 @@
 package com.bik.flower_shop.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bik.flower_shop.mapper.CouponMapper;
-import com.bik.flower_shop.pojo.dto.CouponDTO;
+import com.bik.flower_shop.mapper.CouponUserMapper;
+import com.bik.flower_shop.pojo.dto.CouponAdminDTO;
+import com.bik.flower_shop.pojo.dto.UserCouponDTO;
 import com.bik.flower_shop.pojo.entity.Coupon;
+import com.bik.flower_shop.pojo.entity.CouponUser;
+import com.bik.flower_shop.pojo.entity.User;
+import com.bik.flower_shop.utils.TimeUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -20,9 +27,11 @@ import java.util.Objects;
 public class CouponService {
 
     private final CouponMapper couponMapper;
+    private final CouponUserMapper couponUserMapper;
+    private final TokenService tokenService;
 
     // 新增优惠券
-    public Coupon createCoupon(CouponDTO dto) {
+    public Coupon createCoupon(CouponAdminDTO dto) {
         Coupon coupon = new Coupon();
         coupon.setName(dto.getName());
         coupon.setType(dto.getType());
@@ -44,7 +53,7 @@ public class CouponService {
     }
 
     // 修改优惠券
-    public boolean updateCoupon(Integer id, CouponDTO dto) {
+    public boolean updateCoupon(Integer id, CouponAdminDTO dto) {
         Coupon coupon = couponMapper.selectById(id);
         if (coupon == null) {
             return false;
@@ -95,4 +104,102 @@ public class CouponService {
     }
 
 
+    // 获取用户可用优惠券列表
+    public Map<String, Object> listUserCouponsWithStatus(Integer userId) {
+        List<UserCouponDTO> allUserCoupons = couponMapper.selectUserCoupons(userId);
+
+        long now = Instant.now().getEpochSecond();
+
+        List<UserCouponDTO> valid = allUserCoupons.stream()
+                .filter(c -> c.getEndTime() != null && c.getEndTime() > now)
+                .toList();
+
+        List<UserCouponDTO> expired = allUserCoupons.stream()
+                .filter(c -> c.getEndTime() != null && c.getEndTime() <= now)
+                .toList();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", valid);
+        result.put("totalCount", valid.size());
+        result.put("expired", expired);
+
+        return result;
+    }
+
+
+    // 获取所有优惠券列表
+    public Map<String, Object> listAllCoupons(String token) {
+        Integer userId = null;
+        if (token != null && !token.isEmpty()) {
+            User user = tokenService.getUserByToken(token);
+            if (user != null) {
+                userId = user.getId();
+            }
+        }
+
+        int now = (int) (System.currentTimeMillis() / 1000);
+        List<UserCouponDTO> coupons = couponMapper.selectAvailableCouponsForUser(now, userId);
+
+        // 转换 DTO，主要处理时间格式
+        List<UserCouponDTO> couponDtos = coupons.stream().peek(c -> {
+            c.setTime(TimeUtils.formatDate(c.getStartTime()) + " ～ " + TimeUtils.formatDate(c.getEndTime()));
+            c.setScope("全场鲜花通用");
+        }).toList();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", couponDtos);
+        result.put("totalCount", couponDtos.size());
+
+        return result;
+    }
+
+
+    // 用户领取优惠券
+    @Transactional(rollbackFor = Exception.class)
+    public void receiveCoupon(Integer userId, Integer couponId) throws IllegalArgumentException {
+        // 1) 检查是否已领取
+        Long count = couponUserMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CouponUser>()
+                        .eq(CouponUser::getCouponId, couponId)
+                        .eq(CouponUser::getUserId, userId)
+        );
+
+        if (count != null && count > 0) {
+            throw new IllegalArgumentException("已领取过该优惠券");
+        }
+
+        // 2) 查询优惠券最新状态
+        Coupon coupon = couponMapper.selectById(couponId);
+        if (coupon == null || coupon.getStatus() == null || coupon.getStatus() != 1) {
+            throw new IllegalArgumentException("优惠券不存在或已失效");
+        }
+
+        int stock = (coupon.getTotal() == null ? 0 : coupon.getTotal()) - (coupon.getUsed() == null ? 0 : coupon.getUsed());
+        if (stock <= 0) {
+            throw new IllegalArgumentException("优惠券已领完");
+        }
+
+        // 3) 乐观更新 coupon.used = used + 1 (并发安全：WHERE used < total)
+        int affected = couponMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<Coupon>()
+                        .lambda()
+                        .eq(Coupon::getId, couponId)
+                        .setSql("used = used + 1")
+                        .lt(Coupon::getUsed, coupon.getTotal())
+        );
+        if (affected <= 0) {
+            // 并发下已被抢完
+            throw new IllegalArgumentException("优惠券已被抢光");
+        }
+
+        // 4) 插入 coupon_user 记录
+        CouponUser cu = new CouponUser();
+        cu.setCouponId(couponId);
+        cu.setUserId(userId);
+        int now = (int) Instant.now().getEpochSecond();
+        cu.setCreateTime(now);
+        cu.setUpdateTime(now);
+        cu.setUsed((byte) 0);
+        couponUserMapper.insert(cu);
+    }
 }

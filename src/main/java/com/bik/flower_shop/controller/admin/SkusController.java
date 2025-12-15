@@ -39,8 +39,8 @@ public class SkusController {
         data.put("name", created.getName());
         data.put("order", String.valueOf(created.getOrder()));
         data.put("defaults", created.getDefaults());
-        data.put("create_time", TimeUtils.format(created.getCreateTime()));
-        data.put("update_time", TimeUtils.format(created.getUpdateTime()));
+        data.put("create_time", TimeUtils.formatDate(created.getCreateTime()));
+        data.put("update_time", TimeUtils.formatDate(created.getUpdateTime()));
         data.put("id", String.valueOf(created.getId()));
 
         return ApiResult.ok(data);

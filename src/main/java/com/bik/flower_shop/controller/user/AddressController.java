@@ -2,6 +2,7 @@ package com.bik.flower_shop.controller.user;// AddressController.java
 
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.AddressCreateDTO;
+import com.bik.flower_shop.pojo.dto.AddressListVO;
 import com.bik.flower_shop.pojo.dto.AddressUpdateDTO;
 import com.bik.flower_shop.pojo.entity.User;
 import com.bik.flower_shop.pojo.vo.AddressVO;
@@ -26,12 +27,13 @@ public class AddressController {
 
     // 获取当前用户地址列表
     @GetMapping
-    public ApiResult<List<AddressVO>> list(@RequestHeader("token") String token) {
+    public ApiResult<AddressListVO> list(@RequestHeader("token") String token) {
         User user = tokenService.getUserByToken(token);
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
-        return ApiResult.ok(addressService.listByUser(user.getId()));
+        AddressListVO result = addressService.listByUser(user.getId());
+        return ApiResult.ok(result);
     }
 
     // 获取单个地址

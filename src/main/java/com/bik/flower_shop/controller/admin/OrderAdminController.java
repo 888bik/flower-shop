@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/admin/order")
 @AuthRequired(role = "admin")
-public class OrderController {
+public class OrderAdminController {
     @PostMapping("/delete_all")
     public ApiResult<?> deleteOrdersBulk() {
         return ApiResult.ok();

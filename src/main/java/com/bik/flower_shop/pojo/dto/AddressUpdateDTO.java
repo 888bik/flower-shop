@@ -25,5 +25,7 @@ public class AddressUpdateDTO {
     @NotBlank
     @Pattern(regexp = "^1[3-9]\\d{9}$")
     private String phone;
-    private Byte isDefault = 0;
+
+    /** 是否默认地址 */
+    private Boolean isDefault;
 }

@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 
 /**
  * <p>
- * 
+ *
  * </p>
  *
  * @author bik
@@ -34,11 +34,6 @@ public class OrderItem implements Serializable {
     @TableField("order_id")
     private Integer orderId;
 
-    /**
-     * 商品id/商品规则id
-     */
-    @TableField("shop_id")
-    private Integer shopId;
 
     /**
      * 购买数量
