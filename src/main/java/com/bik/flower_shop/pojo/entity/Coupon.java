@@ -91,8 +91,8 @@ public class Coupon implements Serializable {
     /**
      * 排序
      */
-    @TableField(value = "`order`")
-    private Integer order;
+    @TableField("sort")
+    private Integer sort;
 
     /**
      * 备注

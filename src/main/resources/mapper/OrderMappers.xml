@@ -15,10 +15,14 @@
             c.used,
             c.start_time AS startTime,
             c.end_time AS endTime,
-            c.`order`,
+            c.sort,
             c.`desc` AS description,
             '全场商品可用' AS scope,
-            CONCAT(FROM_UNIXTIME(c.start_time, '%Y-%m-%d %H:%i:%s'), ' ～ ', FROM_UNIXTIME(c.end_time, '%Y-%m-%d %H:%i:%s')) AS time,
+            CONCAT(
+                    FROM_UNIXTIME(c.start_time, '%Y-%m-%d'),
+                    ' ～ ',
+                    FROM_UNIXTIME(c.end_time, '%Y-%m-%d')
+            ) AS time,
             TRUE AS received,
             (c.total - IFNULL(ucCount.count, 0)) AS stock
         FROM coupon_user uc
@@ -29,7 +33,8 @@
             GROUP BY coupon_id
         ) ucCount ON c.id = ucCount.coupon_id
         WHERE uc.user_id = #{userId}
-        ORDER BY c.`order` DESC, c.id DESC
+        ORDER BY c.sort DESC, c.id DESC
     </select>
+
 
 </mapper>

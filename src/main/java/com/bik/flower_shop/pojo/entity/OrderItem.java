@@ -94,4 +94,10 @@ public class OrderItem implements Serializable {
      */
     @TableField("status")
     private Boolean status;
+
+    @TableField("goods_name")
+    private String goodsTitle;
+
+    @TableField("goods_cover")
+    private String goodsCover;
 }

@@ -46,7 +46,7 @@ public class CouponService {
         coupon.setCreateTime(now);
         coupon.setUpdateTime(now);
         coupon.setDescription(dto.getDescription());
-        coupon.setOrder(Objects.requireNonNullElse(dto.getOrder(), 50));
+        coupon.setSort(Objects.requireNonNullElse(dto.getSort(), 50));
 
         couponMapper.insert(coupon);
         return coupon;
@@ -67,8 +67,8 @@ public class CouponService {
         coupon.setStartTime(dto.getStartTime());
         coupon.setEndTime(dto.getEndTime());
         coupon.setUpdateTime((int) Instant.now().getEpochSecond());
-        if (dto.getOrder() != null) {
-            coupon.setOrder(dto.getOrder());
+        if (dto.getSort() != null) {
+            coupon.setSort(dto.getSort());
         }
         coupon.setDescription(dto.getDescription());
 

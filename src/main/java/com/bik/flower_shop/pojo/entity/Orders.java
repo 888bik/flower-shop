@@ -11,12 +11,11 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
- *
  * @author bik
  * @since 2025-12-04
  */
 @Data
-public class Order implements Serializable {
+public class Orders implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -34,9 +33,9 @@ public class Order implements Serializable {
 
     /**
      * 收货地址
+     * JSON 地址快照
      */
-    @TableField("address")
-    private String address;
+    private String addressSnapshot;
 
     /**
      * 订单总价格
@@ -121,4 +120,28 @@ public class Order implements Serializable {
      */
     @TableField("coupon_user_id")
     private Integer couponUserId;
+
+    /**
+     * 商品小计
+     */
+    @TableField("subtotal")
+    private BigDecimal subtotal;
+
+    /**
+     * 运费
+     */
+    @TableField("shipping_fee")
+    private BigDecimal shippingFee;
+
+    /**
+     * 优惠金额
+     */
+    @TableField("discount")
+    private BigDecimal discount;
+
+    /**
+     * 订单状态
+     */
+    @TableField("pay_status")
+    private String payStatus;
 }

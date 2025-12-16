@@ -6,6 +6,9 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @author bik
+ */
 @Data
 public class GoodsSkusVO {
     private Integer id;

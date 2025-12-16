@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
     // 捕获所有运行时异常
     @ExceptionHandler(RuntimeException.class)
     public ApiResult<?> handleRuntimeException(RuntimeException ex) {
-        return ApiResult.fail("服务器异常: " + ex.getMessage(), 50000);
+        return ApiResult.fail(ex.getMessage(), 50000);
     }
 
     // 捕获所有其他异常

@@ -19,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * @author bik
+ */
 @RequiredArgsConstructor
 @Service
 public class MallService {

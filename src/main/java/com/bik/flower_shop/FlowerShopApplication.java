@@ -3,11 +3,13 @@ package com.bik.flower_shop;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * @author bik
  */
 @SpringBootApplication
+@EnableScheduling
 @MapperScan("com.bik.flower_shop.mapper")
 public class FlowerShopApplication {
 

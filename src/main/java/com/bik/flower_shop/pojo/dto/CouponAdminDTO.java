@@ -17,6 +17,6 @@ public class CouponAdminDTO {
     private BigDecimal minPrice;
     private Integer startTime;
     private Integer endTime;
-    private Integer order;
+    private Integer sort;
     private String description;
 }
