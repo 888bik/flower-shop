@@ -40,7 +40,6 @@ public class GoodsService {
 
     public void checkGoods(Integer id, Byte isCheck) {
         Integer status = (isCheck != null && isCheck == 1) ? 1 : 0;
-        System.out.println("isCheck: " + isCheck);
 
         int rows = goodsMapper.update(null,
                 new UpdateWrapper<Goods>()

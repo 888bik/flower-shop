@@ -2,24 +2,21 @@ package com.bik.flower_shop.controller.user;
 
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
-import com.bik.flower_shop.pojo.dto.LoginDTO;
-import com.bik.flower_shop.pojo.dto.RegisterDTO;
-import com.bik.flower_shop.pojo.dto.UpdateUserDTO;
+import com.bik.flower_shop.common.ListResult;
+import com.bik.flower_shop.context.BaseController;
+import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.User;
 import com.bik.flower_shop.service.TokenService;
 import com.bik.flower_shop.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,12 +26,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController extends BaseController {
 
     private final UserService userService;
     private final TokenService tokenService;
-    private final HttpServletRequest request;
 
+    @Override
+    protected TokenService getTokenService() {
+        return tokenService;
+    }
 
     /**
      * 用户登录
@@ -75,8 +75,6 @@ public class UserController {
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
-        System.out.println(user);
-
         // 调用 Service 上传头像
         String avatarUrl = userService.uploadAvatar(user, file);
 
@@ -87,15 +85,12 @@ public class UserController {
 
 
     @PostMapping("/update")
-    public ApiResult<String> updateUserInfo(
-            @RequestHeader("token") String token,
-            @RequestBody UpdateUserDTO dto
+    public ApiResult<String> updateUserInfo(@RequestBody UpdateUserDTO dto
     ) {
         User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
-
         // 调用 Service 更新
         userService.updateUserInfo(user.getId(), dto);
 
@@ -112,39 +107,41 @@ public class UserController {
         return ApiResult.ok("退出成功");
     }
 
-
-    private User getCurrentUser() {
-        // 从请求头取自定义 token
-        String token = request.getHeader("token");
-        if (token == null || token.isBlank()) {
-            token = request.getParameter("token");
+    /**
+     * 收藏/取消收藏商品
+     */
+    @PostMapping("/favorite/{id}")
+    public ApiResult<FavoriteResultDTO> toggleFavorite(@PathVariable Integer id,
+                                                       @RequestParam Boolean favorite) {
+        User user = getCurrentUser();
+        if (user == null) {
+            return ApiResult.fail("未登录或 token 无效");
         }
-        if (token == null || token.isBlank()) {
-            return null;
-        }
-        // 返回 User 对象
-        return tokenService.getUserByToken(token);
+        FavoriteResultDTO res = userService.toggleFavorite(user.getId(), id, favorite);
+        return ApiResult.ok(res);
     }
 
-    private Integer getCurrentUserId() {
-        // 从请求头取自定义 token
-        String token = request.getHeader("token");
-
-        if (token == null || token.isBlank()) {
-            // 尝试从 cookie 或 query 参数取 token
-            token = request.getParameter("token");
-        }
-
-        if (token == null || token.isBlank()) {
-            return null;
-        }
-
-        // 不需要去掉 "Bearer " 前缀，直接用 token 获取
-        User user = tokenService.getUserByToken(token);
+    /**
+     * 查询某商品是否已收藏
+     */
+    @GetMapping("/favorite/{id}")
+    public ApiResult<Boolean> isFavorite(@PathVariable Integer id) {
+        User user = getCurrentUser();
         if (user == null) {
-            return null;
+            return ApiResult.fail("未登录或 token 无效");
         }
+        return ApiResult.ok(userService.isFavorite(user.getId(), id));
+    }
 
-        return user.getId();
+    /**
+     * 获取当前用户收藏的商品列表
+     */
+    @GetMapping("/favorites")
+    public ApiResult<ListResult<FavoriteGoodsVO>> getFavorites() {
+        User user = getCurrentUser();
+        if (user == null) {
+            return ApiResult.fail("未登录或 token 无效");
+        }
+        return ApiResult.ok(userService.getFavoriteGoodsList(user.getId()));
     }
 }

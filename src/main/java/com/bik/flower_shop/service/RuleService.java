@@ -23,8 +23,6 @@ public class RuleService {
     }
 
     public Rule createRule(RuleDTO dto) {
-        System.out.println("11111111111111111111");
-        System.out.println(dto);
         Rule rule = new Rule();
         rule.setRuleId(dto.getRuleId());
         rule.setMenu(dto.getMenu());

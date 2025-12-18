@@ -26,7 +26,12 @@ public interface GoodsMapper extends BaseMapper<Goods> {
     })
     Goods selectGoodsWithCategories(@Param("goodsId") Integer goodsId);
 
-    Page<Goods> selectGoods(Page<?> page, @Param("dto") GoodsQueryDTO dto);
+    @Update("UPDATE goods SET like_count = like_count + 1 WHERE id = #{goodsId}")
+    void incrementLikeCount(@Param("goodsId") Integer goodsId);
 
-    Long countGoods(@Param("dto") GoodsQueryDTO dto);
+    @Update("UPDATE goods SET like_count = GREATEST(like_count - 1, 0) WHERE id = #{goodsId}")
+    void decrementLikeCount(@Param("goodsId") Integer goodsId);
+
+    @Select("SELECT like_count FROM goods WHERE id = #{goodsId}")
+    Integer selectLikeCount(@Param("goodsId") Integer goodsId);
 }

@@ -42,7 +42,7 @@ public interface CouponMapper extends BaseMapper<Coupon> {
                   AND c.start_time <= #{now}
                   AND c.end_time >= #{now}
                   AND (c.total - c.used) > 0
-                ORDER BY c.`orders` DESC, c.create_time DESC
+                ORDER BY c.sort DESC, c.create_time DESC
             """)
     List<UserCouponDTO> selectAvailableCouponsForUser(@Param("now") Integer now,
                                                       @Param("userId") Integer userId);

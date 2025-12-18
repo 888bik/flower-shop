@@ -2,14 +2,16 @@ package com.bik.flower_shop.controller.user;
 
 import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
+import com.bik.flower_shop.context.BaseController;
+import com.bik.flower_shop.pojo.dto.GoodsDetailDTO;
 import com.bik.flower_shop.pojo.dto.MallQueryDTO;
 import com.bik.flower_shop.pojo.entity.Category;
+import com.bik.flower_shop.pojo.vo.GoodsVO;
+import com.bik.flower_shop.service.GoodsService;
 import com.bik.flower_shop.service.MallService;
+import com.bik.flower_shop.service.TokenService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
@@ -20,9 +22,18 @@ import java.util.Map;
 @RestController
 @RequestMapping("/mall")
 @RequiredArgsConstructor
-public class MallController {
+public class MallController extends BaseController {
+
+    private final TokenService tokenService;
+
+    @Override
+    protected TokenService getTokenService() {
+        return tokenService;
+    }
+
 
     private final MallService mallService;
+    private final GoodsService goodsService;
 
     @GetMapping("/goods")
     public ApiResult<Map<String, Object>> listMallGoods(
@@ -48,5 +59,14 @@ public class MallController {
     ) {
         List<Category> categories = mallService.listCategories(type, parentId, status);
         return ApiResult.ok(categories);
+    }
+
+    @GetMapping("/goods/{id}")
+    public ApiResult<GoodsDetailDTO> frontendGoods(@PathVariable Integer id) {
+        // 获取当前用户id
+        Integer userId = getCurrentUserId();
+        GoodsVO vo = goodsService.getGoodsById(id);
+        GoodsDetailDTO dto = mallService.toFrontendDto(vo, userId);
+        return ApiResult.ok(dto);
     }
 }

@@ -2,8 +2,11 @@ package com.bik.flower_shop.service;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.bik.flower_shop.common.ListResult;
 import com.bik.flower_shop.exception.BusinessException;
 import com.bik.flower_shop.mapper.*;
+import com.bik.flower_shop.pojo.dto.FavoriteGoodsVO;
+import com.bik.flower_shop.pojo.dto.FavoriteResultDTO;
 import com.bik.flower_shop.pojo.dto.RegisterDTO;
 import com.bik.flower_shop.pojo.dto.UpdateUserDTO;
 import com.bik.flower_shop.pojo.entity.*;
@@ -16,6 +19,7 @@ import com.qcloud.cos.model.ObjectMetadata;
 import com.qcloud.cos.model.PutObjectRequest;
 import com.qcloud.cos.region.Region;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -29,6 +33,7 @@ import java.util.*;
 /**
  * @author bik
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -39,6 +44,8 @@ public class UserService {
     private final UserAddressesMapper userAddressesMapper;
     private final UserLevelMapper userLevelMapper;
     private final UserBillMapper userBillMapper;
+    private final UserFavoriteMapper favoriteMapper;
+    private final GoodsMapper goodsMapper;
     @Value("${tencent.cos.secretId}")
     private String tencentSecretId;
 
@@ -310,7 +317,7 @@ public class UserService {
 
             return out;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("图片压缩失败:", e);
             return null;
         }
     }
@@ -333,5 +340,69 @@ public class UserService {
 
         return "https://" + tencentBucketName + ".cos." + tencentRegion + ".myqcloud.com/" + objectName;
     }
+
+    /**
+     * 收藏/取消收藏商品
+     */
+    @Transactional
+    public FavoriteResultDTO toggleFavorite(Integer userId, Integer goodsId, Boolean favorite) {
+        FavoriteResultDTO result = new FavoriteResultDTO();
+        if (Boolean.TRUE.equals(favorite)) {
+            // 尝试插入（返回受影响行数）
+            int inserted = favoriteMapper.insertIfNotExists(userId, goodsId);
+            if (inserted > 0) {
+                goodsMapper.incrementLikeCount(goodsId);
+                result.setMessage("收藏成功");
+            } else {
+                result.setMessage("已收藏");
+            }
+            result.setIsFavorite(true);
+        } else {
+            int deleted = favoriteMapper.deleteByUserAndGoods(userId, goodsId);
+            if (deleted > 0) {
+                goodsMapper.decrementLikeCount(goodsId);
+                result.setMessage("取消收藏成功");
+            } else {
+                result.setMessage("未收藏");
+            }
+            result.setIsFavorite(false);
+        }
+
+        // 获取最新 likeCount（保证返回的计数是最新值）
+        Integer current = goodsMapper.selectLikeCount(goodsId);
+        result.setLikeCount(current == null ? 0 : current);
+        return result;
+    }
+
+    /**
+     * 查询用户是否已收藏
+     */
+    public boolean isFavorite(Integer userId, Integer goodsId) {
+        return favoriteMapper.exists(userId, goodsId);
+    }
+
+    /**
+     * 获取用户收藏的商品列表
+     */
+    public ListResult<FavoriteGoodsVO> getFavoriteGoodsList(Integer userId) {
+        List<Goods> goodsList = favoriteMapper.selectFavoriteGoods(userId);
+
+        List<FavoriteGoodsVO> list = goodsList.stream().map(g -> {
+            FavoriteGoodsVO vo = new FavoriteGoodsVO();
+            vo.setId(g.getId());
+            vo.setTitle(g.getTitle());
+            vo.setCategoryId(g.getCategoryId());
+            vo.setCover(g.getCover());
+            vo.setMinPrice(g.getMinPrice());
+            vo.setMinOprice(g.getMinOprice());
+            vo.setUnit(g.getUnit());
+            vo.setStock(g.getStock());
+            vo.setLikeCount(g.getLikeCount());
+            return vo;
+        }).toList();
+
+        return new ListResult<>(list, list.size());
+    }
+
 
 }

@@ -63,6 +63,8 @@ public class GoodsVO {
 
     private Integer order;
 
+    private Integer likeCount;
+
     // 关联 VO
     private Category category;
     private List<GoodsBanner> goodsBanner = new ArrayList<>();

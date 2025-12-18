@@ -61,7 +61,6 @@ public class ImageClassService {
     public boolean deleteImageClassById(Integer id) {
         // 查询该分类下图片数量
         Long imageCount = imageService.countByClassId(id);
-        System.out.println("imageCount: " + imageCount);
         if (imageCount > 0) {
             // 如果有图片，直接抛异常
             throw new BusinessException("该图库分类下还有图片，不能删除！");

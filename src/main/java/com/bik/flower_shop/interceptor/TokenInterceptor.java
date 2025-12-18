@@ -28,16 +28,10 @@ public class TokenInterceptor implements HandlerInterceptor {
 
         String method = request.getMethod();
         String uri = request.getRequestURI();
-        // 简单日志，便于远端调试：打印方法、URI 和 token header（若存在）
-        System.out.println("TokenInterceptor -> " + method + " " + uri + " Origin:" + request.getHeader("Origin") + " tokenHeader:" + request.getHeader("token"));
 
-        // 允许预检请求通过（非常重要）
         if ("OPTIONS".equalsIgnoreCase(method)) {
             return true;
         }
-
-        // 如果是注册、登录等无需鉴权的接口，直接放行（兼容带 or 不带 /api 前缀的情况）
-        // 你可以根据实际业务把这些路径集中到配置或常量中
         if (uri.endsWith("/user/register") || uri.endsWith("/user/login") || uri.contains("/admin/login")) {
             return true;
         }

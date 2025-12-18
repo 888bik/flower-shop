@@ -36,7 +36,6 @@ public class CouponAdminController {
      */
     @PostMapping("/{id}")
     public ApiResult<Boolean> updateCoupon(@PathVariable Integer id, @RequestBody CouponAdminDTO dto) {
-        System.out.println("dto = " + dto);
         boolean success = couponService.updateCoupon(id, dto);
         return ApiResult.ok(success);
     }
