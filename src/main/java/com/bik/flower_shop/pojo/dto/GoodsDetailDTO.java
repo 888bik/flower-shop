@@ -1,9 +1,5 @@
 package com.bik.flower_shop.pojo.dto;
 
-import com.bik.flower_shop.pojo.DeliveryDTO;
-import com.bik.flower_shop.pojo.dto.PriceDTO;
-import com.bik.flower_shop.pojo.dto.SimpleCategoryDTO;
-import com.bik.flower_shop.pojo.dto.SkuDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

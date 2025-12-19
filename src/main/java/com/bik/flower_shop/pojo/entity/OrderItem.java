@@ -9,6 +9,7 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.Map;
 
 /**
  * <p>
@@ -100,4 +101,5 @@ public class OrderItem implements Serializable {
 
     @TableField("goods_cover")
     private String goodsCover;
+
 }

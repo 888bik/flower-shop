@@ -24,7 +24,7 @@ public class OrderDetailVO {
     private String payStatus;
 
     private OrderAddressDTO address;
-    private List<OrderItemVO> items;
+    private List<OrderUserItemVO> items;
     // 订单过期时间（秒）
     private Integer expireTime;
 }

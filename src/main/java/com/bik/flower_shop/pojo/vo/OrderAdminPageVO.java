@@ -8,7 +8,7 @@ import java.util.List;
  * @author bik
  */
 @Data
-public class OrderListResponse {
-    private List<OrderUserListVO> list;
+public class OrderAdminPageVO {
+    private List<OrderAdminListVO> list;
     private long totalCount;
 }

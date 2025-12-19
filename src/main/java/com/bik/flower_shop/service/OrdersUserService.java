@@ -11,16 +11,14 @@ import com.bik.flower_shop.pojo.dto.OrderCreateItemDTO;
 import com.bik.flower_shop.pojo.dto.OrderExtraDTO;
 import com.bik.flower_shop.pojo.entity.*;
 import com.bik.flower_shop.pojo.vo.OrderDetailVO;
-import com.bik.flower_shop.pojo.vo.OrderItemVO;
+import com.bik.flower_shop.pojo.vo.OrderUserItemVO;
 import com.bik.flower_shop.pojo.vo.OrderListResponse;
-import com.bik.flower_shop.pojo.vo.OrderListVO;
+import com.bik.flower_shop.pojo.vo.OrderUserListVO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.squareup.okhttp.Address;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -33,7 +31,7 @@ import java.util.stream.Collectors;
  */
 @RequiredArgsConstructor
 @Service
-public class OrdersService {
+public class OrdersUserService {
 
     private final OrdersMapper ordersMapper;
     private final OrderItemMapper orderItemMapper;
@@ -196,6 +194,7 @@ public class OrdersService {
         orders.setDiscount(couponDiscount);
         orders.setTotalPrice(totalPrice);
         orders.setRemark(dto.getRemark());
+        orders.setReviewed(false);
         orders.setAddressSnapshot(addressSnapshot);
         orders.setExtra(objectMapper.writeValueAsString(extra));
         orders.setCreateTime(now);
@@ -266,7 +265,7 @@ public class OrdersService {
                         .last("LIMIT " + offset + "," + limit)
         );
 
-        List<OrderListVO> list = new ArrayList<>();
+        List<OrderUserListVO> list = new ArrayList<>();
         if (!orders.isEmpty()) {
             List<Integer> orderIds = orders.stream().map(Orders::getId).toList();
             List<OrderItem> allItems = orderItemMapper.selectList(
@@ -278,7 +277,7 @@ public class OrdersService {
             ObjectMapper mapper = new ObjectMapper();
 
             for (Orders o : orders) {
-                OrderListVO vo = new OrderListVO();
+                OrderUserListVO vo = new OrderUserListVO();
                 vo.setOrderId(o.getId());
                 vo.setOrderNo(o.getNo());
                 vo.setTotalPrice(o.getTotalPrice());
@@ -349,12 +348,12 @@ public class OrdersService {
         return vo;
     }
 
-    private List<OrderItemVO> convertItems(List<OrderItem> items) {
+    private List<OrderUserItemVO> convertItems(List<OrderItem> items) {
 
-        List<OrderItemVO> list = new ArrayList<>(items.size());
+        List<OrderUserItemVO> list = new ArrayList<>(items.size());
 
         for (OrderItem oi : items) {
-            OrderItemVO vo = new OrderItemVO();
+            OrderUserItemVO vo = new OrderUserItemVO();
 
             vo.setGoodsId(oi.getGoodsId());
             // 建议下单时存快照

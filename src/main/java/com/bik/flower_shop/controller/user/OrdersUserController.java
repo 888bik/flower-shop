@@ -2,19 +2,16 @@ package com.bik.flower_shop.controller.user;
 
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.pojo.dto.OrderCreateDTO;
-import com.bik.flower_shop.pojo.entity.Orders;
 import com.bik.flower_shop.pojo.entity.User;
 import com.bik.flower_shop.pojo.vo.OrderDetailVO;
 import com.bik.flower_shop.pojo.vo.OrderListResponse;
-import com.bik.flower_shop.pojo.vo.OrderListVO;
-import com.bik.flower_shop.service.OrdersService;
+import com.bik.flower_shop.service.OrdersUserService;
 import com.bik.flower_shop.service.TokenService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,7 +24,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OrdersUserController {
 
-    private final OrdersService ordersService;
+    private final OrdersUserService ordersService;
     private final TokenService tokenService;
 
     @PostMapping("/create")

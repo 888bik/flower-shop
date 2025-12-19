@@ -10,7 +10,7 @@ import java.util.List;
  * @author bik
  */
 @Data
-public class OrderListVO {
+public class OrderUserListVO {
 
     private Integer orderId;
     private String orderNo;
@@ -25,7 +25,7 @@ public class OrderListVO {
      */
     private OrderAddressDTO address;
 
-    private List<OrderItemVO> items;
+    private List<OrderUserItemVO> items;
 
     private BigDecimal subtotal;
 

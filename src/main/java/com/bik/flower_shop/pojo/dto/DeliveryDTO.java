@@ -1,4 +1,4 @@
-package com.bik.flower_shop.pojo;
+package com.bik.flower_shop.pojo.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

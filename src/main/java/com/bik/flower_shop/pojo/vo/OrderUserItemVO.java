@@ -8,7 +8,7 @@ import java.math.BigDecimal;
  * @author bik
  */
 @Data
-public class OrderItemVO {
+public class OrderUserItemVO {
 
     /** 商品 ID */
     private Integer goodsId;
