@@ -20,6 +20,9 @@ public class ExpressController {
 
     private final ExpressService expressService;
 
+    /**
+     * 获取快递公司
+     */
     @GetMapping("/companies")
     public ApiResult<List<ExpressCompany>> listCompanies() {
         List<ExpressCompany> list = expressService.listAllCompanies();

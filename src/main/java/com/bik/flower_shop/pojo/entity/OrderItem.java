@@ -4,12 +4,12 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Getter;
-import lombok.Setter;
+import com.bik.flower_shop.enumeration.ReviewStatusEnum;
+import lombok.Data;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Map;
 
 /**
  * <p>
@@ -19,11 +19,11 @@ import java.util.Map;
  * @author bik
  * @since 2025-12-04
  */
-@Getter
-@Setter
+@Data
 @TableName("order_item")
 public class OrderItem implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -34,7 +34,6 @@ public class OrderItem implements Serializable {
      */
     @TableField("order_id")
     private Integer orderId;
-
 
     /**
      * 购买数量
@@ -69,6 +68,27 @@ public class OrderItem implements Serializable {
     @TableField("create_time")
     private Integer createTime;
 
+    @TableField("review_status")
+    private Integer reviewStatus;
+
+    @TableField("anonymous")
+    private Boolean anonymous;
+
+    @TableField("review_images")
+    private String reviewImages;
+
+    @TableField("review_append")
+    private String reviewAppend;
+
+    @TableField("review_append_time")
+    private Integer reviewAppendTime;
+
+    @TableField("reply_content")
+    private String replyContent;
+
+    @TableField("reply_time")
+    private Integer replyTime;
+
     /**
      * 规格类型
      */
@@ -84,9 +104,6 @@ public class OrderItem implements Serializable {
     @TableField("user_id")
     private Integer userId;
 
-    /**
-     * 客服回复评论
-     */
     @TableField("extra")
     private String extra;
 
@@ -102,4 +119,12 @@ public class OrderItem implements Serializable {
     @TableField("goods_cover")
     private String goodsCover;
 
+
+    public ReviewStatusEnum getReviewStatusEnum() {
+        return ReviewStatusEnum.of(this.reviewStatus);
+    }
+
+    public void setReviewStatusEnum(ReviewStatusEnum status) {
+        this.reviewStatus = status.getCode();
+    }
 }

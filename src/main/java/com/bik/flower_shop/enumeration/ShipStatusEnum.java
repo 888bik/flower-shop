@@ -18,12 +18,12 @@ public enum ShipStatusEnum {
     private final String code;
     private final String desc;
 
-    public static ShipStatusEnum fromCode(String code) {
+    public static ShipStatusEnum of(String code) {
         for (ShipStatusEnum e : values()) {
-            if (e.code.equals(code)) {
+            if (e.code.equalsIgnoreCase(code)) {
                 return e;
             }
         }
-        throw new IllegalArgumentException("非法物流状态: " + code);
+        throw new IllegalArgumentException("非法发货状态: " + code);
     }
 }

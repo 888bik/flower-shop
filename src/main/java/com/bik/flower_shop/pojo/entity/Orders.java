@@ -144,4 +144,9 @@ public class Orders implements Serializable {
      */
     @TableField("pay_status")
     private String payStatus;
+
+    // 1 表示被管理员删除，0 表示正常
+    private Integer deletedByAdmin;
+    // 1 表示被用户删除，0 表示正常
+    private Integer deletedByUser;
 }

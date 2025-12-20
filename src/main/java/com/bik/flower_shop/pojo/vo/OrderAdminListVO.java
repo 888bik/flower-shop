@@ -12,7 +12,7 @@ import java.util.Map;
  */
 @Data
 public class OrderAdminListVO {
-    private Integer orderId;
+    private Integer id;
     private String orderNo;
 
     private UserSimpleVO user;

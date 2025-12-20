@@ -39,7 +39,6 @@ public class OrderAutoCloseTask {
         for (Orders order : orders) {
             order.setClosed(true);
             order.setUpdateTime(now);
-            order.setPayStatus(PayStatusEnum.CLOSED.getCode());
             ordersMapper.updateById(order);
         }
     }

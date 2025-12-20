@@ -168,7 +168,7 @@ public class Goods implements Serializable {
     @TableField(exist = false)
     private List<Category> categories;
 
-    @TableField("like_count") // 如果数据库有对应字段
+    @TableField("like_count")
     private Integer likeCount;
 
 }

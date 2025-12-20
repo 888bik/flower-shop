@@ -1,19 +1,12 @@
 package com.bik.flower_shop.service;
 
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.bik.flower_shop.enumeration.PayMethod;
-import com.bik.flower_shop.enumeration.PayStatusEnum;
-import com.bik.flower_shop.enumeration.ShipStatusEnum;
+import com.bik.flower_shop.enumeration.*;
 import com.bik.flower_shop.mapper.*;
-import com.bik.flower_shop.pojo.dto.OrderAddressDTO;
-import com.bik.flower_shop.pojo.dto.OrderCreateDTO;
-import com.bik.flower_shop.pojo.dto.OrderCreateItemDTO;
-import com.bik.flower_shop.pojo.dto.OrderExtraDTO;
+import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.*;
-import com.bik.flower_shop.pojo.vo.OrderDetailVO;
-import com.bik.flower_shop.pojo.vo.OrderUserItemVO;
-import com.bik.flower_shop.pojo.vo.OrderListResponse;
-import com.bik.flower_shop.pojo.vo.OrderUserListVO;
+import com.bik.flower_shop.pojo.vo.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +36,7 @@ public class OrdersUserService {
     private final UserAddressesMapper userAddressesMapper;
     private final GoodsMapper goodsMapper;
 
+
     /**
      * 创建订单，返回 orderId 或订单对象
      */
@@ -55,7 +49,7 @@ public class OrdersUserService {
 
         int now = (int) Instant.now().getEpochSecond();
 
-        /* ========================= 1. 商品小计 & 订单项 ========================= */
+        // 1. 商品小计 & 订单项
         BigDecimal subtotal = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
@@ -87,7 +81,7 @@ public class OrdersUserService {
             orderItems.add(oi);
         }
 
-        /* ========================= 2. 优惠券处理 ========================= */
+        // 2. 优惠券处理
         BigDecimal couponDiscount = BigDecimal.ZERO;
         Integer couponUserId = dto.getCouponId();
         CouponUser usedCouponUser = null;
@@ -136,7 +130,7 @@ public class OrdersUserService {
             }
         }
 
-        /* ========================= 3. 配送方式 & extra ========================= */
+        //3. 配送方式
         OrderExtraDTO extra = new OrderExtraDTO();
         OrderExtraDTO.ShippingInfo shipping = new OrderExtraDTO.ShippingInfo();
 
@@ -153,7 +147,7 @@ public class OrdersUserService {
 
         BigDecimal shippingFee = shipping.getFee();
 
-        /* ========================= 4. 总价计算 ========================= */
+        //4. 总价计算
         BigDecimal totalPrice = subtotal
                 .add(shippingFee)
                 .subtract(couponDiscount);
@@ -162,7 +156,7 @@ public class OrdersUserService {
             totalPrice = BigDecimal.ZERO;
         }
 
-        /* ========================= 5. 地址快照 ========================= */
+        // 5. 地址快照
         if (dto.getAddressId() == null) {
             throw new IllegalArgumentException("地址不能为空");
         }
@@ -185,7 +179,7 @@ public class OrdersUserService {
 
         String addressSnapshot = objectMapper.writeValueAsString(snapshot);
 
-        /* ========================= 6. 创建订单 ========================= */
+        // 6. 创建订单
         Orders orders = new Orders();
         orders.setNo(genOrderNo());
         orders.setUserId(userId);
@@ -203,6 +197,14 @@ public class OrdersUserService {
         orders.setPayStatus(PayStatusEnum.UNPAID.getCode());
         orders.setShipStatus(ShipStatusEnum.PENDING.getCode());
         orders.setClosed(false);
+
+        // 默认无退款
+        orders.setRefundStatus(RefundStatusEnum.NONE.getCode());
+
+        orders.setDeletedByAdmin(0);
+        orders.setDeletedByUser(0);
+        orders.setClosed(false);
+
         orders.setReviewed(false);
 
         if (couponUserId != null) {
@@ -211,20 +213,20 @@ public class OrdersUserService {
 
         ordersMapper.insert(orders);
 
-        /* ========================= 7. 保存订单商品 ========================= */
+        //7. 保存订单商品
         for (OrderItem oi : orderItems) {
             oi.setOrderId(orders.getId());
             orderItemMapper.insert(oi);
         }
 
-        /* ========================= 8. 标记优惠券已使用 ========================= */
+        //8. 标记优惠券已使用
         if (usedCouponUser != null) {
             usedCouponUser.setUsed((byte) 1);
             usedCouponUser.setUpdateTime(now);
             couponUserMapper.updateById(usedCouponUser);
         }
 
-        /* ========================= 9. 删除购物车 ========================= */
+        //9. 删除购物车
         for (OrderCreateItemDTO it : dto.getItems()) {
             cartMapper.delete(
                     new LambdaQueryWrapper<Cart>()
@@ -233,7 +235,7 @@ public class OrdersUserService {
             );
         }
 
-        /* ========================= 10. 返回结果 ========================= */
+        //10. 返回结果
         Map<String, Object> result = new HashMap<>();
         result.put("orderId", orders.getId());
         result.put("orderNo", orders.getNo());
@@ -245,22 +247,263 @@ public class OrdersUserService {
         return result;
     }
 
+    /**
+     * 取消订单
+     */
+    @Transactional
+    public void cancelOrder(Integer userId, Integer orderId) {
+        Orders orders = ordersMapper.selectById(orderId);
+        if (orders == null || !orders.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("订单不存在或无权限");
+        }
+        if (orders.getPaidTime() != null && orders.getPaidTime() > 0) {
+            throw new IllegalStateException("已支付订单不能取消");
+        }
+        orders.setClosed(true);
+        orders.setUpdateTime((int) Instant.now().getEpochSecond());
+        ordersMapper.updateById(orders);
+    }
 
     /**
-     * 根据用户分页查询订单（简化：返回 list）
+     * 模拟支付
+     *
+     * @param userId    用户ID
+     * @param orderId   订单ID
+     * @param methodStr 支付方式 (WECHAT, ALIPAY)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void payOrder(Integer userId, Integer orderId, String methodStr) {
+
+        PayMethod method = PayMethod.fromString(methodStr);
+        if (method == null) {
+            throw new IllegalArgumentException("支付方式不支持");
+        }
+
+        Orders order = ordersMapper.selectById(orderId);
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("订单不存在");
+        }
+
+        PayStatusEnum currentPay = PayStatusEnum.of(order.getPayStatus());
+
+        // 已支付
+        if (currentPay == PayStatusEnum.PAID) {
+            throw new IllegalStateException("订单已支付");
+        }
+
+        // 已关闭（使用 closed 字段判断）
+        if (Boolean.TRUE.equals(order.getClosed())) {
+            throw new IllegalStateException("订单已关闭，无法支付");
+        }
+
+        int now = (int) Instant.now().getEpochSecond();
+
+        // 模拟延迟 1~3 秒
+        try {
+            Thread.sleep(1000 + (long) (Math.random() * 2000));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // 模拟支付失败 10%
+        if (Math.random() < 0.1) {
+            throw new RuntimeException("模拟支付失败，请重试");
+        }
+
+        // 支付成功，更新订单状态
+        String paymentNo = "MOCK_" + method.name() + "_" + System.currentTimeMillis();
+
+        order.setPayStatus(PayStatusEnum.PAID.getCode());
+        order.setPaymentMethod(method.name());
+        order.setPaymentNo(paymentNo);
+        order.setPaidTime(now);
+        order.setUpdateTime(now);
+
+        ordersMapper.updateById(order);
+    }
+
+    @Transactional
+    public void confirmReceive(Integer userId, Integer orderId) {
+        Orders order = ordersMapper.selectOne(
+                new LambdaQueryWrapper<Orders>()
+                        .eq(Orders::getId, orderId)
+                        .eq(Orders::getUserId, userId)
+                        .eq(Orders::getDeletedByUser, 0)
+        );
+        if (order == null) {
+            throw new IllegalArgumentException("订单不存在");
+        }
+        if (!order.getUserId().equals(userId)) {
+            throw new SecurityException("无权限操作该订单");
+        }
+
+        ShipStatusEnum curShip = ShipStatusEnum.of(order.getShipStatus());
+
+        // 防重复确认
+        if (curShip == ShipStatusEnum.RECEIVED) {
+            throw new IllegalStateException("订单已确认收货");
+        }
+
+        if (curShip == ShipStatusEnum.PENDING) {
+            throw new IllegalStateException("订单未发货，不能确认收货");
+        }
+
+        // 更新订单物流状态
+        order.setShipStatus(ShipStatusEnum.RECEIVED.getCode());
+        order.setUpdateTime((int) (System.currentTimeMillis() / 1000));
+        ordersMapper.updateById(order);
+
+        // 统计销量（真正正确的地方）
+        List<OrderItem> items = orderItemMapper.selectByOrderId(orderId);
+
+        for (OrderItem item : items) {
+            goodsMapper.increaseSaleCount(
+                    item.getGoodsId(),
+                    item.getNum()
+            );
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void submitReview(Integer userId, Integer orderId, ReviewSubmitDTO dto) {
+
+        Orders order = ordersMapper.selectOne(
+                new LambdaQueryWrapper<Orders>()
+                        .eq(Orders::getId, orderId)
+                        .eq(Orders::getUserId, userId)
+                        .eq(Orders::getDeletedByUser, 0)
+        );
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("订单不存在或无权限操作");
+        }
+
+        // 只允许已收货订单评价
+        ShipStatusEnum shipStatusEnum = ShipStatusEnum.of(order.getShipStatus());
+        if (shipStatusEnum != ShipStatusEnum.RECEIVED && shipStatusEnum != ShipStatusEnum.RECEIVED) {
+            throw new IllegalStateException("订单未收货，无法评价");
+        }
+
+        if (dto == null || dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new IllegalArgumentException("评价内容为空");
+        }
+
+        int now = (int) (System.currentTimeMillis() / 1000);
+        boolean anonymous = Boolean.TRUE.equals(dto.getAnonymous());
+
+        for (ReviewItemDTO itemDto : dto.getItems()) {
+
+            // 校验参数
+            if (itemDto.getOrderItemId() == null) {
+                throw new IllegalArgumentException("orderItemId 不能为空");
+            }
+            if (itemDto.getRating() == null || itemDto.getRating() < 1 || itemDto.getRating() > 5) {
+                throw new IllegalArgumentException("评分必须在 1~5 之间");
+            }
+
+            // 查询订单商品
+            OrderItem oi = orderItemMapper.selectById(itemDto.getOrderItemId());
+            if (oi == null) {
+                throw new IllegalArgumentException("订单商品不存在: " + itemDto.getOrderItemId());
+            }
+
+            // 安全校验
+            if (!oi.getOrderId().equals(orderId)) {
+                throw new SecurityException("订单商品不属于该订单");
+            }
+
+            // 防止重复评价
+            if (oi.getReviewTime() != null) {
+                throw new IllegalStateException("该商品已评价，不能重复提交");
+            }
+
+            // 写入评价数据
+            oi.setRating(itemDto.getRating());
+            oi.setReview(itemDto.getContent());
+            oi.setAnonymous(anonymous);
+            oi.setReviewImages(
+                    itemDto.getImages() == null ? null : JSON.toJSONString(itemDto.getImages())
+            );
+            oi.setReviewTime(now);
+            oi.setReviewStatusEnum(ReviewStatusEnum.REVIEWED);
+
+            orderItemMapper.updateById(oi);
+
+            Goods goods = goodsMapper.selectById(oi.getGoodsId());
+            BigDecimal oldRating = goods.getRating() == null ? BigDecimal.ZERO : goods.getRating();
+            int oldCount = goods.getReviewCount() == null ? 0 : goods.getReviewCount();
+
+            BigDecimal newRating = oldRating.multiply(BigDecimal.valueOf(oldCount))
+                    .add(BigDecimal.valueOf(itemDto.getRating()))
+                    .divide(BigDecimal.valueOf(oldCount + 1), 2, RoundingMode.HALF_UP);
+
+            goods.setRating(newRating);
+            goods.setReviewCount(oldCount + 1);
+            goodsMapper.updateById(goods);
+
+        }
+
+        // 判断是否整单已评价
+        int totalItems = orderItemMapper.countByOrderId(orderId);
+        int reviewedItems = orderItemMapper.countReviewedByOrderId(orderId);
+        if (totalItems > 0 && reviewedItems >= totalItems) {
+            order.setReviewed(true);
+            order.setUpdateTime(now);
+            ordersMapper.updateById(order);
+        }
+    }
+
+    public List<ReviewItemVO> getReviewItems(Integer userId, Integer orderId) {
+        Orders order = ordersMapper.selectOne(
+                new LambdaQueryWrapper<Orders>()
+                        .eq(Orders::getId, orderId)
+                        .eq(Orders::getUserId, userId)
+                        .eq(Orders::getDeletedByUser, 0)
+        );
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("订单不存在或无权限查看");
+        }
+
+        // 只有已确认收货的订单可以评价
+        ShipStatusEnum shipStatusEnum = ShipStatusEnum.of(order.getShipStatus());
+        if (shipStatusEnum != ShipStatusEnum.RECEIVED) {
+            return Collections.emptyList();
+        }
+
+        List<OrderItem> items = orderItemMapper.selectByOrderId(orderId);
+        List<ReviewItemVO> vos = new ArrayList<>();
+        for (OrderItem it : items) {
+            ReviewItemVO vo = new ReviewItemVO();
+            vo.setOrderItemId(it.getId());
+            vo.setGoodsId(it.getGoodsId());
+            vo.setGoodsTitle(it.getGoodsTitle());
+            vo.setGoodsCover(it.getGoodsCover());
+            vo.setNum(it.getNum() != null ? it.getNum() : (it.getGoodsNum() != null ? it.getGoodsNum() : 0));
+            // canReview 如果 review_time 未设置且 rating 为空
+            boolean canReview = (it.getReviewTime() == null || it.getRating() == null);
+            vo.setCanReview(canReview);
+            vos.add(vo);
+        }
+        return vos;
+    }
+
+    /**
+     * 根据用户分页查询订单
      */
     public OrderListResponse listOrdersByUser(Integer userId, Integer page, Integer limit) throws JsonProcessingException {
         int offset = Math.max(0, (page - 1) * limit);
 
         // 查询总数
         long totalCount = ordersMapper.selectCount(
-                new LambdaQueryWrapper<Orders>().eq(Orders::getUserId, userId)
+                new LambdaQueryWrapper<Orders>().
+                        eq(Orders::getUserId, userId)
+                        .eq(Orders::getDeletedByUser, 0)
         );
 
         // 查询分页订单列表
         List<Orders> orders = ordersMapper.selectList(
                 new LambdaQueryWrapper<Orders>()
                         .eq(Orders::getUserId, userId)
+                        .eq(Orders::getDeletedByUser, 0)
                         .orderByDesc(Orders::getCreateTime)
                         .last("LIMIT " + offset + "," + limit)
         );
@@ -288,7 +531,7 @@ public class OrdersUserService {
                 vo.setDiscount(o.getDiscount());
                 vo.setExpireTime(calcExpireTime(o));
                 vo.setPayStatus(o.getPayStatus());
-
+                vo.setReviewed(o.getReviewed());
                 // 地址反序列化
                 if (o.getAddressSnapshot() != null) {
                     vo.setAddress(mapper.readValue(o.getAddressSnapshot(), OrderAddressDTO.class));
@@ -310,12 +553,16 @@ public class OrdersUserService {
         return response;
     }
 
-
     /**
-     * 订单详情（含 items）
+     * 订单详情
      */
     public OrderDetailVO getOrderDetail(Integer userId, Integer orderId) throws JsonProcessingException {
-        Orders o = ordersMapper.selectById(orderId);
+        Orders o = ordersMapper.selectOne(
+                new LambdaQueryWrapper<Orders>()
+                        .eq(Orders::getId, orderId)
+                        .eq(Orders::getUserId, userId)
+                        .eq(Orders::getDeletedByUser, 0)
+        );
         if (o == null || !o.getUserId().equals(userId)) {
             throw new IllegalArgumentException("订单不存在");
         }
@@ -332,7 +579,6 @@ public class OrdersUserService {
         vo.setDiscount(o.getDiscount());
         vo.setExpireTime(calcExpireTime(o));
         vo.setPayStatus(o.getPayStatus());
-
         // 地址
         vo.setAddress(
                 objectMapper.readValue(o.getAddressSnapshot(), OrderAddressDTO.class)
@@ -373,26 +619,6 @@ public class OrdersUserService {
         return list;
     }
 
-
-    /**
-     * 取消订单
-     */
-    @Transactional
-    public void cancelOrder(Integer userId, Integer orderId) {
-        Orders orders = ordersMapper.selectById(orderId);
-        if (orders == null || !orders.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("订单不存在或无权限");
-        }
-        if (orders.getPaidTime() != null && orders.getPaidTime() > 0) {
-            throw new IllegalStateException("已支付订单不能取消");
-        }
-        orders.setPayStatus(PayStatusEnum.CLOSED.getCode());
-        orders.setClosed(true);
-        orders.setUpdateTime((int) Instant.now().getEpochSecond());
-        ordersMapper.updateById(orders);
-    }
-
-
     // helper: 生成订单号
     private String genOrderNo() {
         return "ORD" + Instant.now().toEpochMilli() + (new Random().nextInt(9000) + 1000);
@@ -418,7 +644,7 @@ public class OrdersUserService {
     private Integer calcExpireTime(Orders o) {
         // 仅未支付且未关闭订单才有倒计时
         if (!PayStatusEnum.UNPAID.getCode().equals(o.getPayStatus()) || Boolean.TRUE.equals(o.getClosed())) {
-            return null;
+            return 0;
         }
 
         int now = (int) Instant.now().getEpochSecond();
@@ -429,60 +655,18 @@ public class OrdersUserService {
         return Math.max(remaining, 0);
     }
 
-
     /**
-     * 模拟支付
-     *
-     * @param userId    用户ID
-     * @param orderId   订单ID
-     * @param methodStr 支付方式 (WECHAT, ALIPAY)
+     * 用户软删除订单
      */
-    @Transactional(rollbackFor = Exception.class)
-    public void payOrder(Integer userId, Integer orderId, String methodStr) {
-
-        PayMethod method = PayMethod.fromString(methodStr);
-        if (method == null) {
-            throw new IllegalArgumentException("支付方式不支持");
+    @Transactional
+    public int markDeletedByUser(Integer userId, List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return 0;
         }
-
-        Orders order = ordersMapper.selectById(orderId);
-        if (order == null || !order.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("订单不存在");
-        }
-
-        if ("PAID".equals(order.getPayStatus())) {
-            throw new IllegalStateException("订单已支付");
-        }
-
-        if ("CLOSED".equals(order.getPayStatus())) {
-            throw new IllegalStateException("订单已关闭，无法支付");
-        }
-
-        int now = (int) Instant.now().getEpochSecond();
-
-        // 模拟延迟 1~3 秒
-        try {
-            Thread.sleep(1000 + (long) (Math.random() * 2000));
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        // 模拟支付失败 10%
-        if (Math.random() < 0.1) {
-            throw new RuntimeException("模拟支付失败，请重试");
-        }
-
-        // 支付成功，更新订单状态
-        String paymentNo = "MOCK_" + method.name() + "_" + System.currentTimeMillis();
-
-        order.setPayStatus(PayStatusEnum.PAID.getCode());
-        order.setPaymentMethod(method.name());
-        order.setPaymentNo(paymentNo);
-        order.setPaidTime(now);
-        order.setUpdateTime(now);
-
-        ordersMapper.updateById(order);
+        return ordersMapper.markDeletedByUser(userId, ids);
     }
 
-
+    public Orders getOrderById(Long orderId) {
+        return ordersMapper.selectById(orderId);
+    }
 }

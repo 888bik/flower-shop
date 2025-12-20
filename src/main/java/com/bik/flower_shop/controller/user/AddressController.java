@@ -25,7 +25,9 @@ public class AddressController {
     private final UserAddressService addressService;
     private final TokenService tokenService;
 
-    // 获取当前用户地址列表
+    /**
+     * 获取当前用户地址列表
+     */
     @GetMapping
     public ApiResult<AddressListVO> list(@RequestHeader("token") String token) {
         User user = tokenService.getUserByToken(token);
@@ -36,7 +38,10 @@ public class AddressController {
         return ApiResult.ok(result);
     }
 
-    // 获取单个地址
+
+    /**
+     * 获取单个地址
+     */
     @GetMapping("/{id}")
     public ApiResult<AddressVO> get(@RequestHeader("token") String token, @PathVariable Integer id) {
         User user = tokenService.getUserByToken(token);
@@ -50,7 +55,9 @@ public class AddressController {
         return ApiResult.ok(vo);
     }
 
-    // 新增地址
+    /**
+     * 新增地址
+     */
     @PostMapping
     public ApiResult<?> create(@RequestHeader("token") String token,
                                @Validated @RequestBody AddressCreateDTO dto) {
@@ -62,7 +69,9 @@ public class AddressController {
         return ApiResult.ok();
     }
 
-    // 编辑地址
+    /**
+     * 编辑地址
+     */
     @PutMapping("/{id}")
     public ApiResult<?> update(@RequestHeader("token") String token,
                                @PathVariable Integer id,
@@ -75,7 +84,10 @@ public class AddressController {
         return ApiResult.ok();
     }
 
-    // 删除地址
+
+    /**
+     * 删除地址
+     */
     @DeleteMapping("/{id}")
     public ApiResult<?> delete(@RequestHeader("token") String token, @PathVariable Integer id) {
         User user = tokenService.getUserByToken(token);
@@ -86,7 +98,10 @@ public class AddressController {
         return ApiResult.ok();
     }
 
-    // 设为默认
+
+    /**
+     * 设为默认地址
+     */
     @PostMapping("/{id}/default")
     public ApiResult<?> setDefault(@RequestHeader("token") String token, @PathVariable Integer id) {
         User user = tokenService.getUserByToken(token);

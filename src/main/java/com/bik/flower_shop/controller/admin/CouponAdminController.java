@@ -44,7 +44,7 @@ public class CouponAdminController {
      * 删除优惠券
      */
     @PostMapping("/{id}/delete")
-    public ApiResult<Boolean> delete(@PathVariable Integer id) {
+    public ApiResult<Boolean> deleteCoupon(@PathVariable Integer id) {
         boolean success = couponService.deleteCoupon(id);
         return ApiResult.ok(success);
     }
@@ -63,7 +63,7 @@ public class CouponAdminController {
      * 修改优惠券状态
      */
     @PostMapping("/{id}/update_status")
-    public ApiResult<Boolean> updateStatus(@PathVariable Integer id,
+    public ApiResult<Boolean> updateCouponStatus(@PathVariable Integer id,
                                            @RequestBody StatusDTO dto) {
         boolean success = couponService.updateCouponStatus(id, dto.getStatus());
         return ApiResult.ok(success);

@@ -13,15 +13,14 @@ public enum PayStatusEnum {
 
     UNPAID("unpaid", "未支付"),
     PAID("paid", "已支付"),
-    REFUNDED("refunded", "已退款"),
-    CLOSED("closed", "已关闭");
+    REFUNDED("refunded", "已退款");
 
     private final String code;
     private final String desc;
 
-    public static PayStatusEnum fromCode(String code) {
+    public static PayStatusEnum of(String code) {
         for (PayStatusEnum e : values()) {
-            if (e.code.equals(code)) {
+            if (e.code.equalsIgnoreCase(code)) {
                 return e;
             }
         }

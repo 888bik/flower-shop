@@ -1,5 +1,6 @@
 package com.bik.flower_shop.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -150,7 +151,7 @@ public class MallService {
         GoodsDetailDTO dto = new GoodsDetailDTO();
         dto.setId(vo.getId());
         dto.setTitle(vo.getTitle());
-        dto.setSubtitle(null);
+        dto.setDescription(vo.getDescription());
         dto.setLikeCount(vo.getLikeCount() == null ? 0 : vo.getLikeCount());
 
         // 判断当前用户是否收藏
@@ -237,14 +238,12 @@ public class MallService {
 
         dto.setSku(skuDto);
 
-        // stock
         StockDTO stock = new StockDTO();
         stock.setTotal(vo.getStock() == null ? 0 : vo.getStock());
         stock.setDisplay(vo.getStockDisplay() != null && vo.getStockDisplay() == 1);
         stock.setMinStock(vo.getMinStock());
         dto.setStock(stock);
 
-        // sales
         SalesDTO sales = new SalesDTO();
         sales.setSaleCount(vo.getSaleCount() == null ? 0 : vo.getSaleCount());
         sales.setReviewCount(vo.getReviewCount() == null ? 0 : vo.getReviewCount());
@@ -257,9 +256,9 @@ public class MallService {
         DeliveryDTO delivery = new DeliveryDTO();
         delivery.setExpressId(vo.getExpressId());
         delivery.setFee(BigDecimal.ZERO);
-        dto.setDelivery(delivery);
+//        dto.setDelivery(delivery);
 
-        // isAvailable: 上架且通过审核 且 库存>0 (你可以按业务调整)
+        // isAvailable: 上架且通过审核 且 库存>0
         boolean available = (vo.getStatus() != null && vo.getStatus() == 1)
                 && (vo.getIscheck() != null && vo.getIscheck() == 1)
                 && (vo.getStock() == null || vo.getStock() > 0);
@@ -269,7 +268,6 @@ public class MallService {
         return dto;
     }
 
-    // helper
     private BigDecimal safeParseBigDecimal(String s) {
         try {
             return s == null ? null : new BigDecimal(s);
@@ -283,6 +281,49 @@ public class MallService {
             return null;
         }
         return "¥" + p.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    public Page<GoodsSearchDTO> searchGoods(String keyword, int page, int limit) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return new Page<>(page, limit);
+        }
+
+        String kw = keyword.trim();
+        Page<Goods> pg = new Page<>(page, limit);
+
+        LambdaQueryWrapper<Goods> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Goods::getStatus, (byte) 1)
+                .nested(w -> w.like(Goods::getTitle, kw)
+                        .or()
+                        .like(Goods::getDescription, kw))
+                .orderByDesc(Goods::getSaleCount)
+                .orderByDesc(Goods::getRating)
+                .orderByDesc(Goods::getUpdateTime);
+
+        Page<Goods> resultPage = goodsMapper.selectPage(pg, wrapper);
+
+        // 转换成 DTO
+        Page<GoodsSearchDTO> dtoPage = new Page<>();
+        dtoPage.setCurrent(resultPage.getCurrent());
+        dtoPage.setSize(resultPage.getSize());
+        dtoPage.setTotal(resultPage.getTotal());
+        dtoPage.setPages(resultPage.getPages());
+
+        List<GoodsSearchDTO> dtoList = resultPage.getRecords().stream().map(g -> new GoodsSearchDTO(
+                g.getId(),
+                g.getTitle(),
+                g.getCover(),
+                g.getMinPrice(),
+                g.getMinOprice(),
+                g.getRating() != null ? g.getRating().doubleValue() : 0,
+                g.getSaleCount(),
+                g.getReviewCount(),
+                g.getDescription(),
+                g.getUnit()
+        )).toList();
+
+        dtoPage.setRecords(dtoList);
+        return dtoPage;
     }
 
 

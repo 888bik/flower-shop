@@ -20,24 +20,32 @@ public class GoodsDetailDTO implements Serializable {
 
     private Integer id;
     private String title;
-    private String subtitle;           // 可选副标题
+    private String description;
     private SimpleCategoryDTO category;
-    private String cover;              // 封面图
-    private List<String> banners;       // 轮播图
+    // 封面图
+    private String cover;
+    // 轮播图
+    private List<String> banners;
 
+    // 价格信息
+    private PriceDTO price;
+    // SKU 信息（items + cards）
+    private SkuDTO sku;
+    // 库存信息
+    private StockDTO stock;
+    // 销量/评分信息
+    private SalesDTO sales;
+    // 单位
+    private String unit;
+    // 商品详情 HTML（已经过白名单过滤）
+    private String contentHtml;
+    // 运费/配送信息
+//    private DeliveryDTO delivery;
 
-    private PriceDTO price;            // 价格信息
-    private SkuDTO sku;                // SKU 信息（items + cards）
-    private StockDTO stock;            // 库存信息
-    private SalesDTO sales;            // 销量/评分信息
-
-    private String unit;               // 单位
-    private String contentHtml;        // 商品详情 HTML（已经过白名单过滤）
-    private DeliveryDTO delivery;      // 运费/配送信息
-
-    private Boolean isAvailable;       // 是否可购买（上架 + 审核 + 库存判断等）
-    private Long createTime;           // 时间戳（秒或毫秒，按你项目约定）
+    private Boolean isAvailable;
+    private Long createTime;
 
     private Integer likeCount;
-    private Boolean isFavorite;   // 当前登录用户是否收藏
+    // 当前登录用户是否收藏
+    private Boolean isFavorite;
 }

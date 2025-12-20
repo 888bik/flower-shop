@@ -1,11 +1,14 @@
 package com.bik.flower_shop.controller.user;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
 import com.bik.flower_shop.context.BaseController;
 import com.bik.flower_shop.pojo.dto.GoodsDetailDTO;
+import com.bik.flower_shop.pojo.dto.GoodsSearchDTO;
 import com.bik.flower_shop.pojo.dto.MallQueryDTO;
 import com.bik.flower_shop.pojo.entity.Category;
+import com.bik.flower_shop.pojo.entity.Goods;
 import com.bik.flower_shop.pojo.vo.GoodsVO;
 import com.bik.flower_shop.service.GoodsService;
 import com.bik.flower_shop.service.MallService;
@@ -30,7 +33,6 @@ public class MallController extends BaseController {
     protected TokenService getTokenService() {
         return tokenService;
     }
-
 
     private final MallService mallService;
     private final GoodsService goodsService;
@@ -68,5 +70,19 @@ public class MallController extends BaseController {
         GoodsVO vo = goodsService.getGoodsById(id);
         GoodsDetailDTO dto = mallService.toFrontendDto(vo, userId);
         return ApiResult.ok(dto);
+    }
+
+    /**
+     * 搜索商品
+     * GET /goods/search?keyword=xxx&page=1&limit=12
+     */
+    @GetMapping("/search")
+    public ApiResult<Page<GoodsSearchDTO>> search(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "limit", defaultValue = "12") Integer limit) {
+
+        Page<GoodsSearchDTO> result = mallService.searchGoods(keyword, page, limit);
+        return ApiResult.ok(result);
     }
 }

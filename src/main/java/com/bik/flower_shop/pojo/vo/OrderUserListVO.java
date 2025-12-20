@@ -34,4 +34,8 @@ public class OrderUserListVO {
     private BigDecimal discount;
 
     private Integer expireTime;
+
+    private Boolean reviewed;
+
+    private String orderStatus;
 }

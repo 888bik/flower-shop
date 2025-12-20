@@ -34,4 +34,50 @@ public interface GoodsMapper extends BaseMapper<Goods> {
 
     @Select("SELECT like_count FROM goods WHERE id = #{goodsId}")
     Integer selectLikeCount(@Param("goodsId") Integer goodsId);
+
+    @Update("""
+                UPDATE goods
+                SET sale_count = IFNULL(sale_count, 0) + #{num}
+                WHERE id = #{goodsId}
+            """)
+    void increaseSaleCount(@Param("goodsId") Integer goodsId,
+                           @Param("num") Integer num);
+
+
+    // 审核中
+    @Select("""
+                SELECT COUNT(*)
+                FROM goods
+                WHERE ischeck = 0
+            """)
+    Long countPending();
+
+    // 销售中
+    @Select("""
+                SELECT COUNT(*)
+                FROM goods
+                WHERE ischeck = 1
+                  AND status = 1
+            """)
+    Long countOnSale();
+
+    // 已下架
+    @Select("""
+                SELECT COUNT(*)
+                FROM goods
+                WHERE ischeck = 1
+                  AND status = 0
+            """)
+    Long countOffSale();
+
+    // 库存预警
+    @Select("""
+                SELECT COUNT(*)
+                FROM goods
+                WHERE ischeck = 1
+                  AND status = 1
+                  AND stock <= min_stock
+            """)
+    Long countLowStock();
+
 }
