@@ -37,10 +37,10 @@ public class OrdersUserService {
     //    private final GoodsSkuMapper goodsSkuMapper;
     private final UserAddressesMapper userAddressesMapper;
     private final GoodsMapper goodsMapper;
+    private final JsonExtraUtil jsonExtraUtil;
+    private final UserMapper userMapper;
+    private final UserLevelMapper userLevelMapper;
 
-
-    @Resource
-    private JsonExtraUtil jsonExtraUtil;
 
     /**
      * 创建订单，返回 orderId 或订单对象
@@ -358,7 +358,7 @@ public class OrdersUserService {
         order.setUpdateTime((int) (System.currentTimeMillis() / 1000));
         ordersMapper.updateById(order);
 
-        // 统计销量（真正正确的地方）
+        // 统计销量
         List<OrderItem> items = orderItemMapper.selectByOrderId(orderId);
 
         for (OrderItem item : items) {
@@ -366,6 +366,30 @@ public class OrdersUserService {
                     item.getGoodsId(),
                     item.getNum()
             );
+        }
+
+        // 累加用户消费金额 + 次数
+        BigDecimal payPrice = order.getTotalPrice();
+        if (payPrice != null && payPrice.compareTo(BigDecimal.ZERO) > 0) {
+            userMapper.increaseOrderPrice(userId, payPrice);
+            userMapper.increaseOrderCount(userId);
+        }
+
+        // 查询最新用户数据
+        User user = userMapper.selectById(userId);
+
+        // 判断是否需要升级会员
+        UserLevel targetLevel = userLevelMapper.selectMatchedLevel(
+                user.getOrderPrice(),
+                user.getOrderCount()
+        );
+
+        //升级
+        if (targetLevel != null &&
+                !targetLevel.getId().equals(user.getUserLevelId())) {
+
+            user.setUserLevelId(targetLevel.getId());
+            userMapper.updateById(user);
         }
     }
 
@@ -384,7 +408,7 @@ public class OrdersUserService {
 
         // 只允许已收货订单评价
         ShipStatusEnum shipStatusEnum = ShipStatusEnum.of(order.getShipStatus());
-        if (shipStatusEnum != ShipStatusEnum.RECEIVED && shipStatusEnum != ShipStatusEnum.RECEIVED) {
+        if (shipStatusEnum != ShipStatusEnum.RECEIVED) {
             throw new IllegalStateException("订单未收货，无法评价");
         }
 
@@ -625,7 +649,7 @@ public class OrdersUserService {
         return list;
     }
 
-    // helper: 生成订单号
+    //生成订单号
     private String genOrderNo() {
         return "ORD" + Instant.now().toEpochMilli() + (new Random().nextInt(9000) + 1000);
     }
@@ -741,6 +765,9 @@ public class OrdersUserService {
         ordersMapper.updateById(order);
     }
 
+    /**
+     * 用户提交退货
+     */
     @Transactional
     public void submitReturn(RefundReturnDTO dto, Integer userId) {
         Orders order = ordersMapper.selectById(dto.getOrderId());

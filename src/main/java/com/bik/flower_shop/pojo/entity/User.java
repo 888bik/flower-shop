@@ -126,4 +126,12 @@ public class User implements Serializable {
 
     @TableField(exist = false)
     private String role = "user";
+
+
+    /**
+     * 订单数量
+     */
+    @TableField("order_count")
+    private Integer orderCount;
+
 }

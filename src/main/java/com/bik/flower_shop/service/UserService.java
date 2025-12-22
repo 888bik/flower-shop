@@ -5,10 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.bik.flower_shop.common.ListResult;
 import com.bik.flower_shop.exception.BusinessException;
 import com.bik.flower_shop.mapper.*;
-import com.bik.flower_shop.pojo.dto.FavoriteGoodsVO;
-import com.bik.flower_shop.pojo.dto.FavoriteResultDTO;
-import com.bik.flower_shop.pojo.dto.RegisterDTO;
-import com.bik.flower_shop.pojo.dto.UpdateUserDTO;
+import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.*;
 import com.bik.flower_shop.utils.PasswordUtil;
 import com.qcloud.cos.COSClient;
@@ -28,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -119,12 +117,20 @@ public class UserService {
             throw new BusinessException("用户名已存在");
         }
 
+        int now = (int) (System.currentTimeMillis() / 1000);
+
         User user = new User();
         user.setUsername(username);
         user.setPassword(PasswordUtil.encode(dto.getPassword()));
         if (dto.getEmail() != null) {
             user.setEmail(dto.getEmail().trim());
         }
+        user.setStatus((byte) 1);
+        user.setUserLevelId(1);
+        user.setOrderPrice(BigDecimal.ZERO);
+        user.setOrderCount(0);
+        user.setCreateTime(now);
+        user.setUpdateTime(now);
 
         userMapper.insert(user);
 
@@ -402,6 +408,20 @@ public class UserService {
         }).toList();
 
         return new ListResult<>(list, list.size());
+    }
+
+    public Map<String, Object> getUserList(Integer page, Integer limit, String keyword) {
+
+        int offset = (page - 1) * limit;
+        String kw = (keyword == null || keyword.isBlank()) ? null : keyword;
+
+        List<UserListDTO> list = userMapper.selectUserList(offset, limit, kw);
+        Integer totalCount = userMapper.countUser(kw);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("list", list);
+        data.put("totalCount", totalCount);
+        return data;
     }
 
 
