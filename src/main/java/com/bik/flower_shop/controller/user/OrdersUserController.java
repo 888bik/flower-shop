@@ -2,10 +2,7 @@ package com.bik.flower_shop.controller.user;
 
 import com.alibaba.fastjson.JSON;
 import com.bik.flower_shop.common.ApiResult;
-import com.bik.flower_shop.mapper.OrdersMapper;
-import com.bik.flower_shop.pojo.dto.OrderCreateDTO;
-import com.bik.flower_shop.pojo.dto.ReviewSubmitDTO;
-import com.bik.flower_shop.pojo.dto.ShipDataDTO;
+import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.Orders;
 import com.bik.flower_shop.pojo.entity.User;
 import com.bik.flower_shop.pojo.vo.OrderDetailVO;
@@ -16,7 +13,7 @@ import com.bik.flower_shop.service.TokenService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,7 +29,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OrdersUserController {
 
-    private final OrdersUserService ordersService;
+    private final OrdersUserService ordersUserService;
     private final TokenService tokenService;
 
 
@@ -49,7 +46,7 @@ public class OrdersUserController {
             return ApiResult.fail("未登录或 token 无效");
         }
 
-        Map<String, Object> res = ordersService.createOrder(user.getId(), dto);
+        Map<String, Object> res = ordersUserService.createOrder(user.getId(), dto);
         return ApiResult.ok(res);
     }
 
@@ -64,7 +61,7 @@ public class OrdersUserController {
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
-        OrderListResponse list = ordersService.listOrdersByUser(user.getId(), page, limit);
+        OrderListResponse list = ordersUserService.listOrdersByUser(user.getId(), page, limit);
         return ApiResult.ok(list);
     }
 
@@ -78,7 +75,7 @@ public class OrdersUserController {
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
-        OrderDetailVO detail = ordersService.getOrderDetail(user.getId(), id);
+        OrderDetailVO detail = ordersUserService.getOrderDetail(user.getId(), id);
         return ApiResult.ok(detail);
     }
 
@@ -91,7 +88,7 @@ public class OrdersUserController {
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
-        ordersService.cancelOrder(user.getId(), id);
+        ordersUserService.cancelOrder(user.getId(), id);
         return ApiResult.ok();
     }
 
@@ -106,7 +103,7 @@ public class OrdersUserController {
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
-        ordersService.payOrder(user.getId(), id, payMethod.get("payMethod"));
+        ordersUserService.payOrder(user.getId(), id, payMethod.get("payMethod"));
         return ApiResult.ok();
     }
 
@@ -121,7 +118,7 @@ public class OrdersUserController {
         }
 
         // 2. 查询订单
-        Orders order = ordersService.getOrderById(orderId);
+        Orders order = ordersUserService.getOrderById(orderId);
         if (order == null || !order.getUserId().equals(user.getId())) {
             return ApiResult.fail("订单不存在或无权限查看");
         }
@@ -145,7 +142,7 @@ public class OrdersUserController {
             return ApiResult.fail("未登录或 token 无效");
         }
 
-        ordersService.confirmReceive(user.getId(), id);
+        ordersUserService.confirmReceive(user.getId(), id);
         return ApiResult.ok("确认收货成功");
     }
 
@@ -162,7 +159,7 @@ public class OrdersUserController {
             return ApiResult.fail("未登录或 token 无效");
         }
 
-        List<ReviewItemVO> items = ordersService.getReviewItems(user.getId(), orderId);
+        List<ReviewItemVO> items = ordersUserService.getReviewItems(user.getId(), orderId);
         return ApiResult.ok(items);
     }
 
@@ -181,7 +178,7 @@ public class OrdersUserController {
             return ApiResult.fail("未登录或 token 无效");
         }
 
-        ordersService.submitReview(user.getId(), orderId, dto);
+        ordersUserService.submitReview(user.getId(), orderId, dto);
         return ApiResult.ok("评价提交成功");
     }
 
@@ -202,8 +199,47 @@ public class OrdersUserController {
             return ApiResult.fail("ids 不能为空");
         }
 
-        int deleted = ordersService.markDeletedByUser(user.getId(), ids);
+        int deleted = ordersUserService.markDeletedByUser(user.getId(), ids);
         return ApiResult.ok(deleted);
+    }
+
+    /**
+     * 用户申请退款
+     */
+    @PostMapping("/refund/apply")
+    public ApiResult<Void> applyRefund(@RequestHeader("token") String token, @RequestBody RefundApplyDTO dto) {
+        User user = tokenService.getUserByToken(token);
+        if (user == null) {
+            return ApiResult.fail("未登录或 token 无效");
+        }
+        ordersUserService.applyRefund(user.getId(), dto.getOrderId(), dto.getReason(), dto.getRefundType());
+        return ApiResult.ok();
+    }
+
+    /**
+     * 用户提交退货
+     */
+    @PostMapping("/refund/return")
+    public ApiResult<Void> submitReturn(@RequestHeader("token") String token, @RequestBody RefundReturnDTO dto) {
+        User user = tokenService.getUserByToken(token);
+        if (user == null) {
+            return ApiResult.fail("未登录或 token 无效");
+        }
+        ordersUserService.submitReturn(dto, user.getId());
+        return ApiResult.ok();
+    }
+
+    /**
+     * 用户提交退货物流信息
+     */
+    @PostMapping("/return/ship")
+    public ApiResult<Void> submitReturnShip(@RequestHeader("token") String token, @RequestBody @Validated RefundReturnShipDTO dto) {
+        User user = tokenService.getUserByToken(token);
+        if (user == null) {
+            return ApiResult.fail("未登录或 token 无效");
+        }
+        ordersUserService.submitReturnShip(user.getId(), dto);
+        return ApiResult.ok();
     }
 
 }

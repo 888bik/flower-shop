@@ -16,10 +16,6 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
-    /**
-     * GET /api/goods/{goodsId}/reviews
-     * params: page (default 1), pageSize (default 10), filter (optional: withPhotos|positive|negative)
-     */
     @GetMapping("/{goodsId}")
     public ApiResult<ReviewPageResponse> getReviews(
             @PathVariable Integer goodsId,

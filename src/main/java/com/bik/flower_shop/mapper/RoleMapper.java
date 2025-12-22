@@ -21,7 +21,7 @@ public interface RoleMapper extends BaseMapper<Role> {
                 FROM rule r
                 INNER JOIN role_rule rr ON r.id = rr.rule_id
                 WHERE rr.role_id = #{roleId}
-                ORDER BY r.`orders`, r.id
+                ORDER BY r.`order`, r.id
             """)
     List<RoleRulePivotDTO> getRoleRules(Integer roleId);
 

@@ -15,8 +15,10 @@ import com.bik.flower_shop.pojo.entity.Goods;
 import com.bik.flower_shop.pojo.entity.OrderItem;
 import com.bik.flower_shop.pojo.entity.Orders;
 import com.bik.flower_shop.pojo.vo.*;
+import com.bik.flower_shop.utils.JsonExtraUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,9 @@ public class OrdersAdminService {
     private final ExpressCompanyMapper expressCompanyMapper;
     private final OrderShipService orderShipService;
 
+
+    @Resource
+    private JsonExtraUtil jsonExtraUtil;
 
     @Transactional
     public int deleteOrdersBulk(List<Integer> ids) {
@@ -68,27 +73,51 @@ public class OrdersAdminService {
         String tab = dto.getTab() == null ? "all" : dto.getTab();
 
         switch (tab) {
+
             case "nopay":
+                // 待支付
                 wrapper.eq(Orders::getPayStatus, PayStatusEnum.UNPAID.getCode())
                         .eq(Orders::getClosed, false);
                 break;
+
             case "noship":
+                // 待发货（已支付、未发货、未进入退款流程）
                 wrapper.eq(Orders::getPayStatus, PayStatusEnum.PAID.getCode())
-                        .eq(Orders::getShipStatus, ShipStatusEnum.PENDING.getCode());
+                        .eq(Orders::getShipStatus, ShipStatusEnum.PENDING.getCode())
+                        .in(Orders::getRefundStatus, RefundStatusEnum.NONE.getCode(), RefundStatusEnum.COMPLETED.getCode());
                 break;
+
             case "shipped":
-                wrapper.eq(Orders::getShipStatus, ShipStatusEnum.SHIPPED.getCode());
+                // 待收货
+                wrapper.eq(Orders::getShipStatus, ShipStatusEnum.SHIPPED.getCode())
+                        .in(Orders::getRefundStatus, RefundStatusEnum.NONE.getCode(), RefundStatusEnum.COMPLETED.getCode());
                 break;
+
             case "received":
-                wrapper.eq(Orders::getShipStatus, ShipStatusEnum.RECEIVED.getCode());
+                // 已收货
+                wrapper.eq(Orders::getShipStatus, ShipStatusEnum.RECEIVED.getCode())
+                        .in(Orders::getRefundStatus, RefundStatusEnum.NONE.getCode(), RefundStatusEnum.COMPLETED.getCode());
                 break;
+
             case "refunding":
-                wrapper.eq(Orders::getRefundStatus, RefundStatusEnum.PENDING.getCode());
+                // 退款中（整个退款流程，包括用户已申请退货）
+                wrapper.in(
+                        Orders::getRefundStatus,
+                        RefundStatusEnum.PENDING.getCode(),
+                        RefundStatusEnum.AGREED.getCode(),
+                        RefundStatusEnum.RETURN_REQUESTED.getCode(),
+                        RefundStatusEnum.RETURNING.getCode()
+                );
                 break;
+
             case "closed":
+                // 已关闭
                 wrapper.eq(Orders::getClosed, true);
                 break;
+
+            case "all":
             default:
+                // 全部，不加条件
                 break;
         }
 
@@ -284,40 +313,109 @@ public class OrdersAdminService {
 
 
     @Transactional
-    public void handleRefund(Long id, boolean agree, String reason) {
-        Orders order = ordersMapper.selectById(id);
+    public void handleRefund(Integer orderId, boolean agree, String adminReason, String refundType) {
+        Orders order = ordersMapper.selectById(orderId);
         if (order == null) {
-            throw new IllegalArgumentException("订单不存在:" + id);
+            throw new IllegalArgumentException("订单不存在");
         }
 
-        // 使用 refundStatus + payStatus 判定，不使用 orderStatus
-        RefundStatusEnum refundStatus = RefundStatusEnum.of(order.getRefundStatus());
-        PayStatusEnum payStatus = PayStatusEnum.of(order.getPayStatus());
-
-        // 只有已支付订单才能进入退款处理（按你业务可调整）
-        if (payStatus != PayStatusEnum.PAID) {
-            throw new IllegalStateException("未支付订单不可退款处理");
+        // 1. 校验支付状态
+        if (PayStatusEnum.of(order.getPayStatus()) != PayStatusEnum.PAID) {
+            throw new IllegalStateException("未支付订单不能退款");
         }
 
-        // 必须处于退款中（pending）才允许处理
-        if (refundStatus != RefundStatusEnum.PENDING) {
-            throw new IllegalStateException("订单当前状态不可退款处理");
+        // 2. 当前退款状态
+        RefundStatusEnum cur = RefundStatusEnum.of(
+                order.getRefundStatus() == null ? RefundStatusEnum.NONE.getCode() : order.getRefundStatus()
+        );
+
+        // 3. 校验 refundType 和对应状态
+        boolean isOnlyRefund = "only_refund".equalsIgnoreCase(refundType);
+        boolean isReturnRefund = "return_refund".equalsIgnoreCase(refundType);
+
+        if (!isOnlyRefund && !isReturnRefund) {
+            throw new IllegalArgumentException("非法的退款类型");
         }
+
+        if (isOnlyRefund && cur != RefundStatusEnum.PENDING) {
+            throw new IllegalStateException("当前订单没有待处理的退款申请");
+        }
+
+        if (isReturnRefund && cur != RefundStatusEnum.RETURN_REQUESTED) {
+            throw new IllegalStateException("当前订单没有待处理的退货申请");
+        }
+
+        long now = System.currentTimeMillis() / 1000;
+
+        // 4. 构造退款日志
+        Map<String, Object> refundLog = new HashMap<>();
+        refundLog.put("adminTime", now);
+        refundLog.put("adminReason", adminReason);
+        refundLog.put("refundType", refundType);
 
         if (agree) {
-            order.setRefundStatus(RefundStatusEnum.AGREED.getCode());
-            // 注意：实际退款成功后，应该在退款回调里把 payStatus 设置为 REFUNDED，并根据业务设置 closed 等
+            refundLog.put("adminAction", "agreed");
+
+            if (isOnlyRefund) {
+                // 仅退款：用户未发货
+                if (!"pending".equalsIgnoreCase(order.getShipStatus())) {
+                    throw new IllegalStateException("已发货订单不能仅退款");
+                }
+                order.setRefundStatus(RefundStatusEnum.COMPLETED.getCode());
+                order.setPayStatus(PayStatusEnum.REFUNDED.getCode());
+                order.setRefundNo("REF" + System.currentTimeMillis());
+                order.setClosed(true);
+
+            } else if (isReturnRefund) {
+                // 退货退款：用户已收货
+                if (!"received".equalsIgnoreCase(order.getShipStatus())) {
+                    throw new IllegalStateException("未收货订单不能退货退款");
+                }
+                // 状态改为等待用户退货
+                order.setRefundStatus(RefundStatusEnum.AGREED.getCode());
+            }
+
         } else {
+            // 拒绝退款
             order.setRefundStatus(RefundStatusEnum.REJECTED.getCode());
-            // 将拒绝理由写入 extra
-            Map<String, Object> extra = new HashMap<>();
-            extra.put("refund_reject_reason", reason);
-            order.setExtra(JSON.toJSONString(extra));
+            refundLog.put("adminAction", "rejected");
         }
-        order.setUpdateTime((int) (System.currentTimeMillis() / 1000L));
+
+        // 5. 写入 extra
+        order.setExtra(jsonExtraUtil.put(order.getExtra(), "refund_result", refundLog));
+        order.setUpdateTime((int) now);
         ordersMapper.updateById(order);
     }
 
+
+
+    @Transactional
+    public void confirmRefund(Integer orderId) {
+        Orders order = ordersMapper.selectById(orderId);
+        if (order == null) {
+            throw new IllegalArgumentException("订单不存在");
+        }
+
+        RefundStatusEnum cur = RefundStatusEnum.of(order.getRefundStatus());
+        if (cur != RefundStatusEnum.RETURNING) {
+            throw new IllegalStateException("当前订单未寄回商品，不能确认退款");
+        }
+
+        order.setRefundStatus(RefundStatusEnum.COMPLETED.getCode());
+        order.setPayStatus(PayStatusEnum.REFUNDED.getCode());
+        order.setRefundNo("REF" + System.currentTimeMillis());
+        order.setClosed(true);
+
+        Map<String, Object> log = new HashMap<>();
+        log.put("confirmTime", System.currentTimeMillis() / 1000);
+
+        order.setExtra(
+                jsonExtraUtil.put(order.getExtra(), "refund_confirm", log)
+        );
+
+        order.setUpdateTime((int) (System.currentTimeMillis() / 1000));
+        ordersMapper.updateById(order);
+    }
 
     public void exportOrders() {
         // 导出占位：生产环境用 Apache POI 生成 Excel 并通过 response 输出

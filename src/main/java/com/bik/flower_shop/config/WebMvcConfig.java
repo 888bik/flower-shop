@@ -36,6 +36,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/admin/goods/*",
                         "/mall/**",
                         "/user/login",
+                        "/user/review/*",
                         "/user/register",
                         "/user/coupon/all",
                         "/api/user/register",

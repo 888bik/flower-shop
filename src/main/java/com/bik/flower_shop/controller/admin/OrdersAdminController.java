@@ -3,9 +3,7 @@ package com.bik.flower_shop.controller.admin;
 import com.alibaba.fastjson.JSON;
 import com.bik.flower_shop.annotation.AuthRequired;
 import com.bik.flower_shop.common.ApiResult;
-import com.bik.flower_shop.pojo.dto.OrderListQueryDTO;
-import com.bik.flower_shop.pojo.dto.ShipDataDTO;
-import com.bik.flower_shop.pojo.dto.ShipOrderRequest;
+import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.Orders;
 import com.bik.flower_shop.pojo.vo.OrderAdminPageVO;
 import com.bik.flower_shop.service.OrdersAdminService;
@@ -62,19 +60,7 @@ public class OrdersAdminController {
     }
 
     /**
-     * 处理退款（同意 / 拒绝）
-     */
-    @PostMapping("/{id}/handle_refund")
-    public ApiResult<?> handleRefund(@PathVariable Long id,
-                                     @RequestParam("agree") Integer agree,
-                                     @RequestParam(value = "disagree_reason", required = false) String disagreeReason) {
-        boolean isAgree = (agree != null && agree == 1);
-        ordersAdminService.handleRefund(id, isAgree, disagreeReason);
-        return ApiResult.ok(0);
-    }
-
-    /**
-     * 导出订单（占位实现，可返回文件流）
+     * 导出订单
      */
     @PostMapping("/excelexport")
     public ApiResult<?> exportOrders() {
@@ -102,4 +88,23 @@ public class OrdersAdminController {
         ShipDataDTO shipData = JSON.parseObject(shipDataStr, ShipDataDTO.class);
         return ApiResult.ok(shipData);
     }
+
+    /**
+     * 订单退款处理
+     */
+    @PostMapping("/refund/handle")
+    public ApiResult<Void> handleRefund(@RequestBody RefundHandleDTO dto) {
+        ordersAdminService.handleRefund(dto.getOrderId(), Boolean.TRUE.equals(dto.getAgree()), dto.getReason(), dto.getRefundType());
+        return ApiResult.ok();
+    }
+
+    /**
+     * 订单退款确认
+     */
+    @PostMapping("/refund/confirm")
+    public ApiResult<Void> confirmRefund(@RequestBody ConfirmRefundRequest request) {
+        ordersAdminService.confirmRefund(request.getOrderId());
+        return ApiResult.ok();
+    }
+
 }

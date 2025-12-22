@@ -27,6 +27,4 @@ public class OrderDetailVO {
     private List<OrderUserItemVO> items;
     // 订单过期时间（秒）
     private Integer expireTime;
-
-    private String orderStatus;
 }

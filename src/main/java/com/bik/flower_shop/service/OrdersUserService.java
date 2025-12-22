@@ -7,8 +7,10 @@ import com.bik.flower_shop.mapper.*;
 import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.*;
 import com.bik.flower_shop.pojo.vo.*;
+import com.bik.flower_shop.utils.JsonExtraUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,9 @@ public class OrdersUserService {
     private final UserAddressesMapper userAddressesMapper;
     private final GoodsMapper goodsMapper;
 
+
+    @Resource
+    private JsonExtraUtil jsonExtraUtil;
 
     /**
      * 创建订单，返回 orderId 或订单对象
@@ -531,6 +536,7 @@ public class OrdersUserService {
                 vo.setDiscount(o.getDiscount());
                 vo.setExpireTime(calcExpireTime(o));
                 vo.setPayStatus(o.getPayStatus());
+                vo.setRefundStatus(o.getRefundStatus());
                 vo.setReviewed(o.getReviewed());
                 // 地址反序列化
                 if (o.getAddressSnapshot() != null) {
@@ -669,4 +675,142 @@ public class OrdersUserService {
     public Orders getOrderById(Long orderId) {
         return ordersMapper.selectById(orderId);
     }
+
+    /**
+     * 用户申请退款（最小侵入设计）
+     */
+    @Transactional
+    public void applyRefund(Integer userId, Integer orderId, String reason, String refundType) {
+        if (orderId == null) {
+            throw new IllegalArgumentException("orderId 不能为空");
+        }
+
+        Orders order = ordersMapper.selectById(orderId);
+        if (order == null || !Objects.equals(order.getUserId(), userId)) {
+            throw new IllegalArgumentException("订单不存在或无权限");
+        }
+
+        // 只允许已支付的订单申请退款
+        String payStatusCode = order.getPayStatus();
+        PayStatusEnum payStatus = null;
+        try {
+            payStatus = PayStatusEnum.of(payStatusCode);
+        } catch (Exception e) {
+            throw new IllegalStateException("非法支付状态，不能申请退款");
+        }
+        if (payStatus != PayStatusEnum.PAID) {
+            throw new IllegalStateException("只有已支付订单才能申请退款");
+        }
+
+        // 如果订单已收货（received）一般不允许申请
+        if (order.getShipStatus() != null && "received".equalsIgnoreCase(order.getShipStatus())) {
+            throw new IllegalStateException("已收货订单请走售后/退货流程（当前不支持直接退款）");
+        }
+
+        // 当前退款状态不可重复申请
+        RefundStatusEnum currentRefund;
+        try {
+            currentRefund = order.getRefundStatus() == null ? RefundStatusEnum.NONE : RefundStatusEnum.of(order.getRefundStatus());
+        } catch (Exception e) {
+            currentRefund = RefundStatusEnum.NONE;
+        }
+        if (currentRefund == RefundStatusEnum.PENDING || currentRefund == RefundStatusEnum.AGREED) {
+            throw new IllegalStateException("退款申请已提交或正在处理");
+        }
+
+        // 设置退款状态
+        order.setRefundStatus(RefundStatusEnum.PENDING.getCode());
+        Map<String, Object> extra = new HashMap<>();
+        if (order.getExtra() != null && !order.getExtra().isEmpty()) {
+            try {
+                extra = new ObjectMapper().readValue(order.getExtra(), Map.class);
+            } catch (Exception ignored) {
+            }
+        }
+        Map<String, Object> refundInfo = new HashMap<>();
+        refundInfo.put("applyReason", reason);
+        refundInfo.put("applyTime", System.currentTimeMillis() / 1000);
+        refundInfo.put("refundType", refundType);
+        extra.put("refund", refundInfo);
+        try {
+            order.setExtra(new ObjectMapper().writeValueAsString(extra));
+        } catch (Exception ignored) {
+        }
+
+        order.setUpdateTime((int) (System.currentTimeMillis() / 1000L));
+        ordersMapper.updateById(order);
+    }
+
+    @Transactional
+    public void submitReturn(RefundReturnDTO dto, Integer userId) {
+        Orders order = ordersMapper.selectById(dto.getOrderId());
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("订单不存在或无权限");
+        }
+
+        // 必须已收货
+        if (!"received".equalsIgnoreCase(order.getShipStatus())) {
+            throw new IllegalStateException("未收货订单不能申请退货");
+        }
+
+        // 检查是否已有退货申请
+        RefundStatusEnum cur = order.getRefundStatus() == null
+                ? RefundStatusEnum.NONE
+                : RefundStatusEnum.of(order.getRefundStatus());
+
+        if (cur != RefundStatusEnum.NONE) {
+            throw new IllegalStateException("订单已申请退款或退货");
+        }
+
+        // 设置退货状态
+        order.setRefundStatus(RefundStatusEnum.RETURN_REQUESTED.getCode());
+
+        Map<String, Object> returnInfo = new HashMap<>();
+        returnInfo.put("returnReason", dto.getReason());
+        returnInfo.put("applyTime", System.currentTimeMillis() / 1000);
+        order.setExtra(jsonExtraUtil.put(order.getExtra(), "return_info", returnInfo));
+
+        order.setUpdateTime((int) (System.currentTimeMillis() / 1000));
+        ordersMapper.updateById(order);
+    }
+
+
+    /**
+     * 用户提交退货物流信息
+     */
+    @Transactional
+    public void submitReturnShip(Integer userId, RefundReturnShipDTO dto) {
+        Orders order = ordersMapper.selectById(dto.getOrderId());
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("订单不存在或无权限");
+        }
+
+        // 1. 必须是退货退款状态，管理员已同意退货
+        if (RefundStatusEnum.of(order.getRefundStatus()) != RefundStatusEnum.AGREED) {
+            throw new IllegalStateException("当前订单不允许提交退货物流");
+        }
+
+        // 2. 检查订单是否已收货
+        if (!"received".equalsIgnoreCase(order.getShipStatus())) {
+            throw new IllegalStateException("未收货订单不能退货");
+        }
+
+        long now = System.currentTimeMillis() / 1000;
+
+        // 3. 构建退货物流信息
+        Map<String, Object> returnShip = new HashMap<>();
+        returnShip.put("company", dto.getCompany());
+        returnShip.put("trackingNo", dto.getTrackingNo());
+        returnShip.put("userTime", now);
+
+        // 写入 extra
+        order.setExtra(jsonExtraUtil.put(order.getExtra(), "return_ship", returnShip));
+
+        // 4. 设置退款状态为用户已寄回
+        order.setRefundStatus(RefundStatusEnum.RETURNING.getCode());
+        order.setUpdateTime((int) now);
+
+        ordersMapper.updateById(order);
+    }
+
 }

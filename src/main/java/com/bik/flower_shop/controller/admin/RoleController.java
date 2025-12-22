@@ -45,7 +45,7 @@ public class RoleController {
     }
 
     /**
-     * 查询角色
+     * 获取角色列表
      */
     @GetMapping("{page}")
     public ApiResult<?> getRoleList(@PathVariable Integer page,

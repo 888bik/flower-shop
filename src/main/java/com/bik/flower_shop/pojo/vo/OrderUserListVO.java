@@ -20,6 +20,8 @@ public class OrderUserListVO {
 
     private String payStatus;
 
+    private String refundStatus;
+
     /**
      * 反序列化后的地址
      */
@@ -36,6 +38,4 @@ public class OrderUserListVO {
     private Integer expireTime;
 
     private Boolean reviewed;
-
-    private String orderStatus;
 }
