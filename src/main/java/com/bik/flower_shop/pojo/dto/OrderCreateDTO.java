@@ -25,5 +25,5 @@ public class OrderCreateDTO {
     @NotEmpty
     private String shippingType;
 
-    private Integer couponId;
+    private Integer couponUserId;
 }

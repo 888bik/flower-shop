@@ -26,8 +26,7 @@ public class ImageController {
      * 上传图片
      */
     @PostMapping("/upload")
-    public ApiResult<List<Image>> uploadImages(@RequestHeader("token") String token,
-                                               @RequestParam("image_class_id") Integer imageClassId,
+    public ApiResult<List<Image>> uploadImages(@RequestParam("image_class_id") Integer imageClassId,
                                                @RequestParam("img") MultipartFile[] files) throws Exception {
         List<Image> images = imageService.uploadImages(imageClassId, files);
         return ApiResult.ok(images);
@@ -37,8 +36,7 @@ public class ImageController {
      * 删除图片
      */
     @PostMapping("/delete_all")
-    public ApiResult<Boolean> deleteImages(@RequestHeader("token") String token,
-                                           @RequestBody Map<String, List<Integer>> body) {
+    public ApiResult<Boolean> deleteImages(@RequestBody Map<String, List<Integer>> body) {
         List<Integer> ids = body.get("ids");
         boolean result = imageService.deleteImagesByIds(ids);
         return ApiResult.ok(result);
@@ -46,7 +44,6 @@ public class ImageController {
 
     @PostMapping("/{id}")
     public ApiResult<Boolean> renameImage(
-            @RequestHeader("token") String token,
             @PathVariable("id") Integer id,
             @RequestBody Map<String, String> body
     ) {

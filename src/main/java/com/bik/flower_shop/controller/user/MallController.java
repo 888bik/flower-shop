@@ -9,6 +9,7 @@ import com.bik.flower_shop.pojo.dto.GoodsSearchDTO;
 import com.bik.flower_shop.pojo.dto.MallQueryDTO;
 import com.bik.flower_shop.pojo.entity.Category;
 import com.bik.flower_shop.pojo.entity.Goods;
+import com.bik.flower_shop.pojo.vo.CategoryVO;
 import com.bik.flower_shop.pojo.vo.GoodsVO;
 import com.bik.flower_shop.service.GoodsService;
 import com.bik.flower_shop.service.MallService;
@@ -54,14 +55,13 @@ public class MallController extends BaseController {
     }
 
     @GetMapping("/categories")
-    public ApiResult<List<Category>> listCategories(
-            @RequestParam(value = "type", required = false) String type,
-            @RequestParam(value = "parentId", required = false) Integer parentId,
+    public ApiResult<List<CategoryVO>> listCategories(
             @RequestParam(value = "status", required = false) Byte status
     ) {
-        List<Category> categories = mallService.listCategories(type, parentId, status);
+        List<CategoryVO> categories = mallService.listCategoriesVO(status);
         return ApiResult.ok(categories);
     }
+
 
     @GetMapping("/goods/{id}")
     public ApiResult<GoodsDetailDTO> frontendGoods(@PathVariable Integer id) {

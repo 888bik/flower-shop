@@ -20,7 +20,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addMapping("/**")
                 // 可以指定前端域名，或者使用 allowedOriginPatterns 支持通配符
                 .allowedOriginPatterns("http://127.0.0.1:3000", "http://127.0.0.1:5173")
-                .allowedMethods("*")
+                .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")
                 .allowedHeaders("*")
                 .exposedHeaders("token")
                 .allowCredentials(true)
@@ -34,7 +34,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/admin/login",
                         "/admin/goods/*",
+                        "/admin/notice/{page}",
                         "/mall/**",
+                        "/home/**",
                         "/user/login",
                         "/user/review/*",
                         "/user/register",

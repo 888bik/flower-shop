@@ -2,18 +2,21 @@ package com.bik.flower_shop.service;
 
 import com.bik.flower_shop.pojo.entity.Manager;
 import com.bik.flower_shop.pojo.entity.User;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * TokenService - 支持多角色 token（admin / user 等）
+ * TokenService
+ * - accessToken + refreshToken
+ * - Redis 存储
+ * - 支持多角色（admin / user）
+ *
  * @author bik
  */
 @Service
@@ -21,100 +24,184 @@ public class TokenService {
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
-    private static final long TOKEN_TTL_SECONDS = 6 * 60 * 60;
 
-    // 可扩展的前缀映射，方便未来增加其它角色
-    private static final Map<String, String> PREFIX_MAP = new ConcurrentHashMap<>();
-    static {
-        PREFIX_MAP.put("admin", "mgr:token:");
-        PREFIX_MAP.put("user", "user:token:");
-    }
+    /**
+     * accessToken 有效期：30 分钟
+     */
+    private static final long ACCESS_TOKEN_TTL = 30 * 60;
+
+    /**
+     * refreshToken 有效期：7 天
+     */
+    private static final long REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60;
+
+    private static final Map<String, String> ACCESS_PREFIX = Map.of(
+            "admin", "admin:access:",
+            "user", "user:access:"
+    );
+
+    private static final Map<String, String> REFRESH_PREFIX = Map.of(
+            "admin", "admin:refresh:",
+            "user", "user:refresh:"
+    );
 
     public TokenService(StringRedisTemplate redis, ObjectMapper objectMapper) {
         this.redis = redis;
         this.objectMapper = objectMapper;
     }
 
-    private String getPrefix(String role) {
-        return PREFIX_MAP.getOrDefault(role, role + ":token:");
-    }
 
     /**
-     * 创建 token 并把序列化后的 account 保存到 Redis（带前缀区分角色）
-     * @param account 管理员或用户对象（已脱敏）
-     * @param role 'admin' 或 'user' 等
-     * @return token 字符串
+     * 创建 accessToken + refreshToken
      */
-    public String createToken(Object account, String role) {
-        String token = UUID.randomUUID().toString().replace("-", "");
-        String prefix = getPrefix(role);
+    public Map<String, String> createTokenPair(Object account, String role) {
+        String accessToken = genToken();
+        String refreshToken = genToken();
+
         try {
             String json = objectMapper.writeValueAsString(account);
-            redis.opsForValue().set(prefix + token, json, TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("序列化失败", e);
+
+            redis.opsForValue().set(
+                    accessKey(role, accessToken),
+                    json,
+                    ACCESS_TOKEN_TTL,
+                    TimeUnit.SECONDS
+            );
+
+            redis.opsForValue().set(
+                    refreshKey(role, refreshToken),
+                    json,
+                    REFRESH_TOKEN_TTL,
+                    TimeUnit.SECONDS
+            );
+
+            return Map.of(
+                    "accessToken", accessToken,
+                    "refreshToken", refreshToken
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Token serialize error", e);
         }
-        return token;
     }
 
-    /**
-     * 类型安全的读取 token -> 反序列化为指定类型
-     * @param token token 字符串
-     * @param role 角色 'admin' / 'user'
-     * @param clazz 想要反序列化成的类型，如 Manager.class
-     * @param <T> 返回类型
-     * @return 反序列化对象或 null（不存在或反序列化失败）
-     */
-    public <T> T getByToken(String token, String role, Class<T> clazz) {
+    //accessToken 校验
+
+    public <T> T getByAccessToken(String token, String role, Class<T> clazz) {
         if (token == null || token.isBlank()) {
             return null;
         }
-        String prefix = getPrefix(role);
-        String key = prefix + token;
-        String json = redis.opsForValue().get(key);
+
+        String json = redis.opsForValue().get(accessKey(role, token));
         if (json == null) {
             return null;
         }
+
         try {
-            // 滑动过期：刷新 TTL
-            redis.expire(key, TOKEN_TTL_SECONDS, TimeUnit.SECONDS);
             return objectMapper.readValue(json, clazz);
         } catch (Exception e) {
             return null;
         }
     }
 
+    //refreshToken 换新 token
+
     /**
-     * 兼容旧代码：非泛型版（会返回 Manager 或 User 对象），推荐使用泛型版。
+     * refreshToken → 新 accessToken + refreshToken（旋转）
      */
-    public Object getByToken(String token, String role) {
-        if ("admin".equals(role)) {
-            return getByToken(token, role, Manager.class);
-        } else {
-            return getByToken(token, role, User.class);
+    public Map<String, String> refreshByRefreshToken(String refreshToken, String role) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return null;
+        }
+
+        String key = refreshKey(role, refreshToken);
+        String json = redis.opsForValue().get(key);
+        if (json == null) {
+            return null;
+        }
+
+        try {
+            // refreshToken 只能用一次（旋转）
+            redis.delete(key);
+
+            Object account = objectMapper.readValue(json, Object.class);
+            return createTokenPair(account, role);
+        } catch (Exception e) {
+            return null;
         }
     }
 
-    public boolean tokenExists(String token, String role) {
-        if (token == null || token.isBlank()) {
-            return false;
+
+    /**
+     * 根据用户 ID 注销该用户所有 token（access + refresh）
+     */
+    public void invalidateAllByManager(String userId, String role) {
+        // 删除所有 accessToken
+        Set<String> accessKeys = redis.keys(ACCESS_PREFIX.get(role) + "*");
+        for (String key : accessKeys) {
+            String json = redis.opsForValue().get(key);
+            // 判断是否是当前用户
+            if (json != null && json.contains(userId)) {
+                redis.delete(key);
+            }
         }
-        return redis.hasKey(getPrefix(role) + token);
+
+        // 删除所有 refreshToken
+        Set<String> refreshKeys = redis.keys(REFRESH_PREFIX.get(role) + "*");
+        for (String key : refreshKeys) {
+            String json = redis.opsForValue().get(key);
+            if (json != null && json.contains(userId)) {
+                redis.delete(key);
+            }
+        }
     }
 
-    public void invalidateToken(String token, String role) {
-        if (token == null || token.isBlank()) {
+
+    /**
+     * 仅失效 accessToken
+     */
+    public void invalidateAccessToken(String token, String role) {
+        if (token == null) {
             return;
         }
-        redis.delete(getPrefix(role) + token);
+        redis.delete(accessKey(role, token));
     }
 
-    // 辅助方法（更语义化）
-    public Manager getManagerByToken(String token) {
-        return getByToken(token, "admin", Manager.class);
+    /**
+     * 仅失效 refreshToken
+     */
+    public void invalidateRefreshToken(String token, String role) {
+        if (token == null) {
+            return;
+        }
+        redis.delete(refreshKey(role, token));
     }
 
-    public User getUserByToken(String token) {
-        return getByToken(token, "user", User.class);
+    /**
+     * 同时失效 access + refresh
+     */
+    public void invalidateAll(String accessToken, String refreshToken, String role) {
+        invalidateAccessToken(accessToken, role);
+        invalidateRefreshToken(refreshToken, role);
+    }
+
+    public Manager getManagerByAccessToken(String token) {
+        return getByAccessToken(token, "admin", Manager.class);
+    }
+
+    public User getUserByAccessToken(String token) {
+        return getByAccessToken(token, "user", User.class);
+    }
+
+
+    private String genToken() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String accessKey(String role, String token) {
+        return ACCESS_PREFIX.get(role) + token;
+    }
+
+    private String refreshKey(String role, String token) {
+        return REFRESH_PREFIX.get(role) + token;
     }
 }

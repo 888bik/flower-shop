@@ -88,7 +88,7 @@ public class OrdersUserService {
 
         // 2. 优惠券处理
         BigDecimal couponDiscount = BigDecimal.ZERO;
-        Integer couponUserId = dto.getCouponId();
+        Integer couponUserId = dto.getCouponUserId();
         CouponUser usedCouponUser = null;
 
         if (couponUserId != null) {

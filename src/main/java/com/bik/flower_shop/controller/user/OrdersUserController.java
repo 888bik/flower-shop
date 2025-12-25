@@ -2,6 +2,7 @@ package com.bik.flower_shop.controller.user;
 
 import com.alibaba.fastjson.JSON;
 import com.bik.flower_shop.common.ApiResult;
+import com.bik.flower_shop.context.BaseController;
 import com.bik.flower_shop.pojo.dto.*;
 import com.bik.flower_shop.pojo.entity.Orders;
 import com.bik.flower_shop.pojo.entity.User;
@@ -27,10 +28,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/user/orders")
 @RequiredArgsConstructor
-public class OrdersUserController {
+public class OrdersUserController extends BaseController {
 
     private final OrdersUserService ordersUserService;
     private final TokenService tokenService;
+
+    @Override
+    protected TokenService getTokenService() {
+        return tokenService;
+    }
 
 
     /**
@@ -38,10 +44,9 @@ public class OrdersUserController {
      */
     @PostMapping("/create")
     public ApiResult<Map<String, Object>> createOrder(
-            @RequestHeader("token") String token,
             @RequestBody @Valid OrderCreateDTO dto) throws JsonProcessingException {
 
-        User user = tokenService.getUserByToken(token);
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -54,10 +59,9 @@ public class OrdersUserController {
      * 获取订单列表
      */
     @GetMapping
-    public ApiResult<OrderListResponse> list(@RequestHeader("token") String token,
-                                             @RequestParam(value = "page", defaultValue = "1") Integer page,
+    public ApiResult<OrderListResponse> list(@RequestParam(value = "page", defaultValue = "1") Integer page,
                                              @RequestParam(value = "limit", defaultValue = "10") Integer limit) throws JsonProcessingException {
-        User user = tokenService.getUserByToken(token);
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -69,9 +73,8 @@ public class OrdersUserController {
      * 获取订单详情
      */
     @GetMapping("/{id}")
-    public ApiResult<OrderDetailVO> detail(@RequestHeader("token") String token,
-                                           @PathVariable Integer id) throws JsonProcessingException {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<OrderDetailVO> detail(@PathVariable Integer id) throws JsonProcessingException {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -83,8 +86,8 @@ public class OrdersUserController {
      * 取消订单
      */
     @PostMapping("/{id}/cancel")
-    public ApiResult<?> cancel(@RequestHeader("token") String token, @PathVariable Integer id) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<?> cancel(@PathVariable Integer id) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -96,10 +99,10 @@ public class OrdersUserController {
      * 支付订单
      */
     @PostMapping("/{id}/pay")
-    public ApiResult<?> pay(@RequestHeader("token") String token,
-                            @PathVariable Integer id,
-                            @RequestBody Map<String, String> payMethod) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<?> pay(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> payMethod) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -111,8 +114,8 @@ public class OrdersUserController {
      * 查看订单物流
      */
     @GetMapping("/{orderId}/ship")
-    public ApiResult<ShipDataDTO> getUserShipData(@RequestHeader("token") String token, @PathVariable Long orderId) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<ShipDataDTO> getUserShipData(@PathVariable Long orderId) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -136,8 +139,8 @@ public class OrdersUserController {
      * 用户确认收货
      */
     @PostMapping("/{id}/receive")
-    public ApiResult<?> confirmReceive(@RequestHeader("token") String token, @PathVariable Integer id) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<?> confirmReceive(@PathVariable Integer id) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -151,10 +154,9 @@ public class OrdersUserController {
      */
     @GetMapping("/{orderId}/review/items")
     public ApiResult<List<ReviewItemVO>> getReviewItems(
-            @RequestHeader("token") String token,
             @PathVariable Integer orderId) {
 
-        User user = tokenService.getUserByToken(token);
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -168,12 +170,10 @@ public class OrdersUserController {
      * 提交评价：一次提交多个商品的评价
      */
     @PostMapping("/{orderId}/review")
-    public ApiResult<?> submitReview(
-            @RequestHeader("token") String token,
-            @PathVariable Integer orderId,
-            @RequestBody ReviewSubmitDTO dto) {
+    public ApiResult<?> submitReview(@PathVariable Integer orderId,
+                                     @RequestBody ReviewSubmitDTO dto) {
 
-        User user = tokenService.getUserByToken(token);
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -187,9 +187,9 @@ public class OrdersUserController {
      * 前端传入 { "ids": [1, 2, 3] }
      */
     @PostMapping("/delete")
-    public ApiResult<Integer> deleteOrders(@RequestHeader("token") String token,
-                                           @RequestBody Map<String, List<Integer>> body) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<Integer> deleteOrders(
+            @RequestBody Map<String, List<Integer>> body) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -207,8 +207,8 @@ public class OrdersUserController {
      * 用户申请退款
      */
     @PostMapping("/refund/apply")
-    public ApiResult<Void> applyRefund(@RequestHeader("token") String token, @RequestBody RefundApplyDTO dto) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<Void> applyRefund(@RequestBody RefundApplyDTO dto) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -220,8 +220,8 @@ public class OrdersUserController {
      * 用户提交退货
      */
     @PostMapping("/refund/return")
-    public ApiResult<Void> submitReturn(@RequestHeader("token") String token, @RequestBody RefundReturnDTO dto) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<Void> submitReturn(@RequestBody RefundReturnDTO dto) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -233,8 +233,8 @@ public class OrdersUserController {
      * 用户提交退货物流信息
      */
     @PostMapping("/return/ship")
-    public ApiResult<Void> submitReturnShip(@RequestHeader("token") String token, @RequestBody @Validated RefundReturnShipDTO dto) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<Void> submitReturnShip(@RequestBody @Validated RefundReturnShipDTO dto) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }

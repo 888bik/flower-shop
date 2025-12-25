@@ -25,7 +25,7 @@ public class RoleController {
      * 创建角色
      */
     @PostMapping
-    public ApiResult<Role> createRole(@RequestHeader("token") String token, @RequestBody RoleDTO dto) {
+    public ApiResult<Role> createRole(@RequestBody RoleDTO dto) {
         Role role = roleService.createRole(dto);
         return ApiResult.ok(role);
     }
@@ -35,7 +35,6 @@ public class RoleController {
      */
     @PostMapping("{id}")
     public ApiResult<Boolean> updateRole(
-            @RequestHeader("token") String token,
             @PathVariable Integer id,
             @RequestBody RoleDTO dto
     ) {
@@ -67,7 +66,6 @@ public class RoleController {
      */
     @PostMapping("/{id}/update_status")
     public ApiResult<Boolean> updateRoleStatus(
-            @RequestHeader("token") String token,
             @PathVariable Integer id,
             @RequestBody StatusDTO dto
     ) {
@@ -80,7 +78,6 @@ public class RoleController {
      */
     @PostMapping("/set_rules")
     public ApiResult<Boolean> setRules(
-            @RequestHeader("token") String token,
             @RequestBody SetRoleRulesDTO dto
     ) {
         boolean success = roleService.setRoleRules(dto.getId(), dto.getRuleIds());

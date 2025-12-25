@@ -1,6 +1,7 @@
 package com.bik.flower_shop.controller.user;// AddressController.java
 
 import com.bik.flower_shop.common.ApiResult;
+import com.bik.flower_shop.context.BaseController;
 import com.bik.flower_shop.pojo.dto.AddressCreateDTO;
 import com.bik.flower_shop.pojo.dto.AddressListVO;
 import com.bik.flower_shop.pojo.dto.AddressUpdateDTO;
@@ -20,17 +21,22 @@ import java.util.List;
 @RestController
 @RequestMapping("/user/addresses")
 @RequiredArgsConstructor
-public class AddressController {
+public class AddressController extends BaseController {
 
     private final UserAddressService addressService;
     private final TokenService tokenService;
+
+    @Override
+    protected TokenService getTokenService() {
+        return tokenService;
+    }
 
     /**
      * 获取当前用户地址列表
      */
     @GetMapping
-    public ApiResult<AddressListVO> list(@RequestHeader("token") String token) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<AddressListVO> getAddressList() {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -43,8 +49,8 @@ public class AddressController {
      * 获取单个地址
      */
     @GetMapping("/{id}")
-    public ApiResult<AddressVO> get(@RequestHeader("token") String token, @PathVariable Integer id) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<AddressVO> getAddress(@PathVariable Integer id) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -59,9 +65,8 @@ public class AddressController {
      * 新增地址
      */
     @PostMapping
-    public ApiResult<?> create(@RequestHeader("token") String token,
-                               @Validated @RequestBody AddressCreateDTO dto) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<?> createAddress(@Validated @RequestBody AddressCreateDTO dto) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -73,10 +78,9 @@ public class AddressController {
      * 编辑地址
      */
     @PutMapping("/{id}")
-    public ApiResult<?> update(@RequestHeader("token") String token,
-                               @PathVariable Integer id,
-                               @Validated @RequestBody AddressUpdateDTO dto) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<?> updateAddress(@PathVariable Integer id,
+                                      @Validated @RequestBody AddressUpdateDTO dto) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -89,8 +93,8 @@ public class AddressController {
      * 删除地址
      */
     @DeleteMapping("/{id}")
-    public ApiResult<?> delete(@RequestHeader("token") String token, @PathVariable Integer id) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<?> deleteAddress(@PathVariable Integer id) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -103,8 +107,8 @@ public class AddressController {
      * 设为默认地址
      */
     @PostMapping("/{id}/default")
-    public ApiResult<?> setDefault(@RequestHeader("token") String token, @PathVariable Integer id) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<?> setDefault(@PathVariable Integer id) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }

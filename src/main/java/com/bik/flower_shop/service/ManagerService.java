@@ -63,7 +63,6 @@ public class ManagerService {
 
         managerMapper.insert(manager);
         manager.setPassword(null);
-        log.info("createManager success, id={}, username={}", manager.getId(), manager.getUsername());
         return manager;
     }
 
@@ -148,7 +147,7 @@ public class ManagerService {
     }
 
     // 登录
-    public String login(String username, String password) {
+    public Map<String, String> loginAndGetTokens(String username, String password) {
         if (username == null || password == null) {
             throw new BusinessException("用户名或密码不能为空");
         }
@@ -161,23 +160,25 @@ public class ManagerService {
 
         manager.setPassword(null);
 
-        return tokenService.createToken(manager, "admin");
+        return tokenService.createTokenPair(manager, "admin");
     }
 
     // 退出登录
-    public void logout(String token) {
-        tokenService.invalidateToken(token, "admin");
+    public void logout(String accessToken, String refreshToken) {
+        tokenService.invalidateAll(accessToken, refreshToken, "admin");
     }
 
     // 修改当前登录用户密码（通过 token 获取 user）
-    public boolean updatePasswordByToken(String token, String oldPassword, String newPassword, String rePassword) {
-        Manager mgrFromRedis = tokenService.getManagerByToken(token);
-        if (mgrFromRedis == null) {
-            throw new RuntimeException("非法token，请先登录！");
+    public boolean updatePassword(Manager currentManager,
+                                  String oldPassword,
+                                  String newPassword,
+                                  String rePassword) {
+
+        if (currentManager == null) {
+            throw new RuntimeException("未登录");
         }
 
-        Integer uid = mgrFromRedis.getId();
-        Manager m = managerMapper.selectById(uid);
+        Manager m = managerMapper.selectById(currentManager.getId());
         if (m == null) {
             throw new RuntimeException("用户不存在");
         }
@@ -188,21 +189,21 @@ public class ManagerService {
         if (!Objects.equals(newPassword, rePassword)) {
             throw new RuntimeException("新密码和确认密码不一致");
         }
+
         m.setPassword(PasswordUtil.encode(newPassword));
         m.setUpdateTime((int) (System.currentTimeMillis() / 1000));
         managerMapper.updateById(m);
-        tokenService.invalidateToken(token, "admin");
+
+        // 失效 token
+//        tokenService.invalidateAll(accessToken, refreshToken, "admin");
         return true;
     }
 
 
-    public Map<String, Object> getInfoByToken(String token) {
-        Manager mgrFromRedis = tokenService.getManagerByToken(token);
-        if (mgrFromRedis == null) {
-            throw new RuntimeException("非法token，请先登录！");
-        }
+    public Map<String, Object> getInfoByToken(Manager currentManager) {
+
         // 使用 redis 中的 id 去数据库拉取最新信息（例如角色可能已变）
-        Integer uid = mgrFromRedis.getId();
+        Integer uid = currentManager.getId();
         Manager m = managerMapper.selectById(uid);
         if (m == null) {
             throw new RuntimeException("用户不存在");
@@ -281,46 +282,5 @@ public class ManagerService {
         // 按 order 排序
         tree.sort(Comparator.comparingInt(n -> (Integer) n.getOrDefault("order", 0)));
         return tree;
-    }
-
-
-    // 工具：把规则列表转为树（以 ruleId 作为父子关系）
-    private List<Rule> listToTree(List<Rule> items, Integer rootId) {
-        Map<Integer, Rule> idMap = new HashMap<>();
-        for (Rule r : items) {
-            idMap.put(r.getId(), r);
-        }
-
-        List<Rule> roots = new ArrayList<>();
-        for (Rule r : items) {
-            if (Objects.equals(r.getRuleId(), rootId)) {
-                roots.add(r);
-            } else {
-                Rule parent = idMap.get(r.getRuleId());
-                if (parent != null) {
-                    if (parent.getChild() == null) {
-                        parent.setChild(new ArrayList<>());
-                    }
-                    parent.getChild().add(r);
-                }
-            }
-        }
-
-        // 递归排序
-        Comparator<Rule> cmp = Comparator.comparingInt(rr -> rr.getOrder() == null ? 0 : rr.getOrder());
-        sortTree(roots, cmp);
-        return roots;
-    }
-
-    private void sortTree(List<Rule> nodes, Comparator<Rule> cmp) {
-        if (nodes == null || nodes.isEmpty()) {
-            return;
-        }
-        nodes.sort(cmp);
-        for (Rule node : nodes) {
-            if (node.getChild() != null && !node.getChild().isEmpty()) {
-                sortTree(node.getChild(), cmp);
-            }
-        }
     }
 }

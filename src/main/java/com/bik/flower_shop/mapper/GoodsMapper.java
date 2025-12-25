@@ -80,4 +80,20 @@ public interface GoodsMapper extends BaseMapper<Goods> {
             """)
     Long countLowStock();
 
+
+    @Select("""
+            SELECT *
+            FROM goods
+            WHERE status = 1
+              AND ischeck = 1
+              AND category_id = #{categoryId}
+            ORDER BY `order` DESC, id DESC
+            LIMIT #{limit}
+            """)
+    List<Goods> selectHomeGoods(
+            @Param("categoryId") Integer categoryId,
+            @Param("limit") Integer limit
+    );
+
+
 }

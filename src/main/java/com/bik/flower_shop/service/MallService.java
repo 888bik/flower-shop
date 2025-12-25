@@ -4,16 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.bik.flower_shop.mapper.CategoryMapper;
-import com.bik.flower_shop.mapper.GoodsBannerMapper;
-import com.bik.flower_shop.mapper.GoodsCategoryMapper;
-import com.bik.flower_shop.mapper.GoodsMapper;
+import com.bik.flower_shop.mapper.*;
 import com.bik.flower_shop.pojo.dto.DeliveryDTO;
 import com.bik.flower_shop.pojo.dto.*;
-import com.bik.flower_shop.pojo.entity.Category;
-import com.bik.flower_shop.pojo.entity.Goods;
-import com.bik.flower_shop.pojo.entity.GoodsBanner;
-import com.bik.flower_shop.pojo.entity.GoodsCategory;
+import com.bik.flower_shop.pojo.entity.*;
 import com.bik.flower_shop.pojo.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,6 +30,7 @@ public class MallService {
     private final GoodsCategoryMapper goodsCategoryMapper;
     private final CategoryMapper categoryMapper;
     private final UserService userService;
+    private final CategoryTypeMapper categoryTypeMapper;
 
     @Transactional(readOnly = true)
     public Map<String, Object> listMallGoods(MallQueryDTO dto) {
@@ -129,20 +124,39 @@ public class MallService {
     }
 
 
-    public List<Category> listCategories(String type, Integer parentId, Byte status) {
-        QueryWrapper<Category> qw = new QueryWrapper<>();
-        if (type != null && !type.isEmpty()) {
-            qw.eq("type", type);
-        }
-        if (parentId != null) {
-            qw.eq("category_id", parentId);
-        }
+    public List<CategoryVO> listCategoriesVO(Byte status) {
+        // 查询所有 category_type
+        QueryWrapper<CategoryType> typeQw = new QueryWrapper<>();
         if (status != null) {
-            qw.eq("status", status);
+            typeQw.eq("status", status);
         }
-        qw.orderByAsc("`order`").orderByDesc("create_time");
-        return categoryMapper.selectList(qw);
+        typeQw.orderByAsc("`order`").orderByDesc("create_time");
+        List<CategoryType> types = categoryTypeMapper.selectList(typeQw);
+
+        // 查询所有二级分类
+        QueryWrapper<Category> catQw = new QueryWrapper<>();
+        if (status != null) {
+            catQw.eq("status", status);
+        }
+        catQw.orderByAsc("`order`").orderByDesc("create_time");
+        List<Category> cats = categoryMapper.selectList(catQw);
+
+        // 按 type_id 分组
+        Map<Integer, List<Category>> catMap = cats.stream()
+                .collect(Collectors.groupingBy(Category::getTypeId));
+
+        // 组装 VO
+        List<CategoryVO> result = new ArrayList<>();
+        for (CategoryType type : types) {
+            CategoryVO vo = new CategoryVO();
+            vo.setTypeId(type.getId());
+            vo.setName(type.getName());
+            vo.setChildren(catMap.getOrDefault(type.getId(), new ArrayList<>()));
+            result.add(vo);
+        }
+        return result;
     }
+
 
     public GoodsDetailDTO toFrontendDto(GoodsVO vo, Integer userId) {
         if (vo == null) {
@@ -325,6 +339,4 @@ public class MallService {
         dtoPage.setRecords(dtoList);
         return dtoPage;
     }
-
-
 }

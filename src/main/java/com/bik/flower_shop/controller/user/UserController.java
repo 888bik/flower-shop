@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,18 +39,16 @@ public class UserController extends BaseController {
      * 用户登录
      */
     @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ApiResult<String> login(@RequestBody LoginDTO dto) {
-        String token = userService.login(dto.getUsername(), dto.getPassword());
-        return ApiResult.ok(token);
+    public ApiResult<Map<String, String>> login(@RequestBody LoginDTO dto) {
+        return ApiResult.ok(userService.loginAndGetTokens(dto.getUsername(), dto.getPassword()));
     }
 
     /**
      * 用户注册
      */
     @PostMapping(value = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ApiResult<String> register(@RequestBody RegisterDTO dto) {
-        String token = userService.register(dto);
-        return ApiResult.ok(token);
+    public ApiResult<Map<String, String>> register(@RequestBody RegisterDTO dto) {
+        return ApiResult.ok(userService.register(dto));
     }
 
     /**
@@ -98,12 +95,16 @@ public class UserController extends BaseController {
     }
 
     @PostMapping("/logout")
-    public ApiResult<String> logout(@RequestHeader("token") String token) {
-        if (StringUtils.isBlank(token)) {
+    public ApiResult<String> logout() {
+        User user = getCurrentUser();
+        String accessToken = getAccessToken();
+        String refreshToken = getRefreshToken();
+
+        if (user == null || StringUtils.isBlank(accessToken) || StringUtils.isBlank(refreshToken)) {
             return ApiResult.fail("未登录或 token 无效");
         }
 
-        userService.logout(token);
+        userService.logout(accessToken, refreshToken);
         return ApiResult.ok("退出成功");
     }
 

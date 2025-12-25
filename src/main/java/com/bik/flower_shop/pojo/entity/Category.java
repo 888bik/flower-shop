@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -22,6 +23,7 @@ import java.io.Serializable;
 @TableName("category")
 public class Category implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @TableId(value = "id", type = IdType.AUTO)
@@ -51,14 +53,7 @@ public class Category implements Serializable {
     @TableField(value = "`order`")
     private Integer order;
 
-    // 新增：分类类型，例如 "用途"、"品种"、"场景"
-    @TableField("type")
-    private String type;
 
     @TableField("type_id")
     private Integer typeId;
-
-    @TableField(exist = false)
-    private String typeName;
-
 }

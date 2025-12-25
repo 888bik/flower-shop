@@ -76,8 +76,7 @@ public class ImageClassController {
      * 删除图库分类
      */
     @PostMapping("/{id}/delete")
-    public ApiResult<Boolean> deleteImageClass(@PathVariable Integer id,
-                                               @RequestHeader("token") String token) {
+    public ApiResult<Boolean> deleteImageClass(@PathVariable Integer id) {
         // 暂时不校验 token，直接调用 Service
         boolean result = imageClassService.deleteImageClassById(id);
         return ApiResult.ok(result);

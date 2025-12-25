@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 @Data
 public class UserCouponDTO {
     private Integer id;
+    private Integer couponId;
     private String name;
     private Byte type;
     private BigDecimal value;

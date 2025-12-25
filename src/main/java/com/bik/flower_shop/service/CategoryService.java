@@ -27,104 +27,26 @@ public class CategoryService {
     private final GoodsMapper goodsMapper;
     private final CategoryTypeMapper typeMapper;
 
-    public Map<String, Object> listCategories(int page, int limit, String type) {
+    public Map<String, Object> listCategories(int page, int limit) {
 
-        // 根据类型筛选
         QueryWrapper<Category> query = new QueryWrapper<>();
-        if (type != null && !type.isEmpty()) {
-            query.eq("type", type);
-        }
+        query.orderByAsc("`order`").orderByDesc("create_time");
 
-        List<Category> all = categoryMapper.selectList(query);
+        // 总数
+        Long total = categoryMapper.selectCount(query);
 
-        // 先收集所有 type code（假设 Category.getType() 返回 String code）
-        Set<String> typeCodes = all.stream()
-                .map(Category::getType)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        // 分页
+        int offset = (page - 1) * limit;
+        query.last("LIMIT " + offset + "," + limit);
 
-        Map<String, CategoryType> typeMap;
-        if (!typeCodes.isEmpty()) {
-            List<CategoryType> types = Optional.ofNullable(typeMapper.selectList(
-                    new QueryWrapper<CategoryType>().in("code", typeCodes)
-            )).orElse(Collections.emptyList());
-            typeMap = types.stream().filter(Objects::nonNull)
-                    .collect(Collectors.toMap(CategoryType::getCode, t -> t, (a, b) -> a));
-        } else {
-            typeMap = Collections.emptyMap();
-        }
-
-        // 转为 VO
-        List<CategoryTreeVO> voList = all.stream().map(c -> {
-            CategoryTreeVO vo = new CategoryTreeVO();
-            vo.setId(c.getId());
-            vo.setName(c.getName());
-            vo.setStatus(c.getStatus());
-            vo.setOrder(c.getOrder());
-            vo.setCategoryId(c.getCategoryId());
-            vo.setCreateTime(c.getCreateTime());
-            vo.setUpdateTime(c.getUpdateTime());
-
-            // 如果 Category 有 type (code)，则尝试用 typeMap 映射到友好名称
-            try {
-                String code = c.getType();
-                if (code != null) {
-                    CategoryType ct = typeMap.get(code);
-                    if (ct != null) {
-                        vo.setType(ct.getName()); // 返回友好显示名
-                    } else {
-                        vo.setType(code); // fallback: 返回原 code
-                    }
-                } else {
-                    vo.setType(null);
-                }
-            } catch (Exception ignore) {
-                // 若 Category 没有 getType()，保持 null
-            }
-
-            return vo;
-        }).toList();
-
-        // 建立 Map
-        Map<Integer, CategoryTreeVO> map = voList.stream()
-                .collect(Collectors.toMap(CategoryTreeVO::getId, v -> v));
-
-        // 构建树
-        List<CategoryTreeVO> roots = new ArrayList<>();
-        for (CategoryTreeVO vo : voList) {
-            Integer parentId = vo.getCategoryId();
-            if (parentId == null || parentId == 0) {
-                roots.add(vo);
-            } else {
-                CategoryTreeVO parent = map.get(parentId);
-                if (parent != null) {
-                    if (parent.getChildren() == null) parent.setChildren(new ArrayList<>());
-                    parent.getChildren().add(vo);
-                }
-            }
-        }
-
-        // 排序
-        Comparator<CategoryTreeVO> comp = Comparator.comparing(
-                CategoryTreeVO::getOrder,
-                Comparator.nullsLast(Integer::compareTo)
-        );
-        sortRecursively(roots, comp);
-
-        // 再分页（只分页一级分类 roots）
-        int total = roots.size();
-        int from = (page - 1) * limit;
-        int to = Math.min(from + limit, total);
-        List<CategoryTreeVO> pageList = from >= total ? Collections.emptyList() : roots.subList(from, to);
-
-        // children 永不为 null
-        ensureNotNull(pageList);
+        List<Category> list = categoryMapper.selectList(query);
 
         Map<String, Object> res = new HashMap<>();
-        res.put("list", pageList);
+        res.put("list", list);
         res.put("totalCount", total);
         return res;
     }
+
 
 
     private void sortRecursively(List<CategoryTreeVO> list, Comparator<CategoryTreeVO> comp) {

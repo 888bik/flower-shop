@@ -29,7 +29,6 @@ public class SkusController {
      */
     @PostMapping
     public ApiResult<Map<String, Object>> createSkus(
-            @RequestHeader("token") String token,
             @RequestBody SkusDTO dto
     ) {
 
@@ -51,7 +50,6 @@ public class SkusController {
      */
     @PostMapping("/{id}")
     public ApiResult<Boolean> updateSkus(
-            @RequestHeader("token") String token,
             @PathVariable("id") Integer id,
             @RequestBody SkusDTO dto
     ) {
@@ -70,7 +68,6 @@ public class SkusController {
      */
     @PostMapping("/{id}/update_status")
     public ApiResult<Boolean> updateSkusStatus(
-            @RequestHeader("token") String token,
             @PathVariable("id") Integer id,
             @RequestBody StatusDTO dto
     ) {
@@ -84,7 +81,6 @@ public class SkusController {
      */
     @GetMapping("/{page}")
     public ApiResult<Map<String, Object>> listSkus(
-            @RequestHeader("token") String token,
             @PathVariable("page") Integer page
     ) {
         int pageSize = 10;
@@ -98,7 +94,6 @@ public class SkusController {
      */
     @PostMapping("/delete_all")
     public ApiResult<Integer> deleteAllSkus(
-            @RequestHeader("token") String token,
             @RequestBody Map<String, Object> body
     ) {
         // 获取 JSON 数组 ids

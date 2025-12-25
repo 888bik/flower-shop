@@ -104,38 +104,48 @@ public class CouponService {
     }
 
 
-    // 获取用户可用优惠券列表
+    // 获取用户优惠券（可用 / 已用 / 过期）
     public Map<String, Object> listUserCouponsWithStatus(Integer userId) {
-        List<UserCouponDTO> allUserCoupons = couponMapper.selectUserCoupons(userId);
 
+        List<UserCouponDTO> all = couponMapper.selectUserCoupons(userId);
         long now = Instant.now().getEpochSecond();
 
-        List<UserCouponDTO> valid = allUserCoupons.stream()
-                .filter(c -> c.getEndTime() != null && c.getEndTime() > now)
+        // 可用：未使用 + 在有效期内
+        List<UserCouponDTO> valid = all.stream()
+                .filter(c ->
+                        c.getUsed() != null && c.getUsed() == 0
+                                && (c.getStartTime() == null || c.getStartTime() <= now)
+                                && (c.getEndTime() == null || c.getEndTime() > now)
+                )
                 .toList();
 
-        List<UserCouponDTO> expired = allUserCoupons.stream()
-                .filter(c -> c.getEndTime() != null && c.getEndTime() <= now)
+        // 已过期（时间过期）
+        List<UserCouponDTO> expired = all.stream()
+                .filter(c ->
+                        c.getEndTime() != null && c.getEndTime() <= now
+                )
+                .toList();
+
+        // 已使用
+        List<UserCouponDTO> used = all.stream()
+                .filter(c ->
+                        c.getUsed() != null && c.getUsed() == 1
+                )
                 .toList();
 
         Map<String, Object> result = new HashMap<>();
-        result.put("list", valid);
+        result.put("list", valid);                // 前端下单用
+        result.put("used", used);                 // 已使用
+        result.put("expired", expired);           // 已过期
         result.put("totalCount", valid.size());
-        result.put("expired", expired);
 
         return result;
     }
 
 
     // 获取所有优惠券列表
-    public Map<String, Object> listAllCoupons(String token) {
-        Integer userId = null;
-        if (token != null && !token.isEmpty()) {
-            User user = tokenService.getUserByToken(token);
-            if (user != null) {
-                userId = user.getId();
-            }
-        }
+    public Map<String, Object> listAllCoupons(User user) {
+        Integer userId = (user != null) ? user.getId() : null;
 
         int now = (int) (System.currentTimeMillis() / 1000);
         List<UserCouponDTO> coupons = couponMapper.selectAvailableCouponsForUser(now, userId);

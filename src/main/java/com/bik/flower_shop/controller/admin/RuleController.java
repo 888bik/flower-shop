@@ -63,8 +63,7 @@ public class RuleController {
      * 删除菜单权限
      */
     @PostMapping("/{id}/delete")
-    public ApiResult<Boolean> deleteRule(@RequestHeader("token") String token,
-                                         @PathVariable Integer id) {
+    public ApiResult<Boolean> deleteRule(@PathVariable Integer id) {
         boolean success = ruleService.deleteRule(id);
         return ApiResult.ok(success);
     }
@@ -73,8 +72,7 @@ public class RuleController {
      * 更新菜单权限状态
      */
     @PostMapping("/{id}/update_status")
-    public ApiResult<Boolean> updateRuleStatus(@RequestHeader("token") String token,
-                                               @PathVariable Integer id,
+    public ApiResult<Boolean> updateRuleStatus(@PathVariable Integer id,
                                                @RequestBody StatusDTO dto) {
         boolean success = ruleService.updateStatus(id, dto.getStatus());
         return ApiResult.ok(success);

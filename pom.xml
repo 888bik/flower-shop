@@ -43,7 +43,6 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- MyBatis-Plus（正确的 Boot3 依赖） -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>

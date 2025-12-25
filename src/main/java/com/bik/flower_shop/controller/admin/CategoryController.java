@@ -29,10 +29,9 @@ public class CategoryController {
      */
     @GetMapping("/{page}")
     public ApiResult<Map<String, Object>> getCategoriesList(@PathVariable int page,
-                                                            @RequestParam(required = false, defaultValue = "10") int limit,
-                                                            @RequestParam(required = false) String type
+                                                            @RequestParam(required = false, defaultValue = "10") int limit
     ) {
-        return ApiResult.ok(categoryService.listCategories(page, limit, type));
+        return ApiResult.ok(categoryService.listCategories(page, limit));
     }
 
     /**

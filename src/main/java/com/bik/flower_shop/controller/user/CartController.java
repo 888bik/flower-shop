@@ -1,6 +1,7 @@
 package com.bik.flower_shop.controller.user;// package com.bik.flower_shop.controller.user;
 
 import com.bik.flower_shop.common.ApiResult;
+import com.bik.flower_shop.context.BaseController;
 import com.bik.flower_shop.pojo.dto.AddCartDTO;
 import com.bik.flower_shop.pojo.dto.UpdateCartNumDTO;
 import com.bik.flower_shop.pojo.entity.User;
@@ -20,18 +21,22 @@ import java.util.List;
 @RestController
 @RequestMapping("/user/cart")
 @RequiredArgsConstructor
-public class CartController {
+public class CartController extends BaseController {
 
     private final TokenService tokenService;
     private final CartService cartService;
+
+    @Override
+    protected TokenService getTokenService() {
+        return tokenService;
+    }
 
     /**
      * 添加购物车
      */
     @PostMapping("/add")
-    public ApiResult<String> addToCart(@RequestHeader("token") String token,
-                                       @RequestBody AddCartDTO dto) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<String> addToCart(@RequestBody AddCartDTO dto) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -47,8 +52,8 @@ public class CartController {
     }
 
     @GetMapping("/list")
-    public ApiResult<List<CartItemVO>> listCart(@RequestHeader("token") String token) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<List<CartItemVO>> listCart() {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -57,8 +62,8 @@ public class CartController {
     }
 
     @DeleteMapping("/remove/{id}")
-    public ApiResult<String> remove(@RequestHeader("token") String token, @PathVariable("id") Integer id) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<String> remove(@PathVariable("id") Integer id) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -67,8 +72,8 @@ public class CartController {
     }
 
     @PostMapping("/clear")
-    public ApiResult<String> clear(@RequestHeader("token") String token) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<String> clear() {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }
@@ -77,8 +82,8 @@ public class CartController {
     }
 
     @PostMapping("/updateNum")
-    public ApiResult<String> updateCartNum(@RequestHeader("token") String token, @RequestBody UpdateCartNumDTO dto) {
-        User user = tokenService.getUserByToken(token);
+    public ApiResult<String> updateCartNum(@RequestBody UpdateCartNumDTO dto) {
+        User user = getCurrentUser();
         if (user == null) {
             return ApiResult.fail("未登录或 token 无效");
         }

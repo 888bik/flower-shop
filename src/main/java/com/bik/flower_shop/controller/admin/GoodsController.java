@@ -95,7 +95,7 @@ public class GoodsController {
      * 添加商品
      */
     @PostMapping
-    public ApiResult<Goods> createGoods(@RequestBody Goods goods){
+    public ApiResult<Goods> createGoods(@RequestBody Goods goods) {
         Goods saved = goodsService.saveGoods(goods);
         return ApiResult.ok(saved);
     }
@@ -105,8 +105,7 @@ public class GoodsController {
      * 更新商品信息
      */
     @PostMapping("/{id}")
-    public ApiResult<String> updateGoods(@PathVariable Integer id, @RequestBody UpdateGoodsDTO dto,
-                                         @RequestHeader(value = "token", required = false) String token) {
+    public ApiResult<String> updateGoods(@PathVariable Integer id, @RequestBody UpdateGoodsDTO dto) {
         boolean success = goodsService.updateGoods(id, dto);
         if (success) {
             return ApiResult.ok("ok");
@@ -119,8 +118,7 @@ public class GoodsController {
      * 批量上架/下架商品
      */
     @PostMapping("/changestatus")
-    public ApiResult<Integer> changeGoodsStatus(@RequestBody ChangeGoodsStatusDTO dto,
-                                                @RequestHeader(value = "token", required = false) String token) {
+    public ApiResult<Integer> changeGoodsStatus(@RequestBody ChangeGoodsStatusDTO dto) {
         int updatedCount = goodsService.changeGoodsStatus(dto);
         return ApiResult.ok(updatedCount);
     }
@@ -129,8 +127,7 @@ public class GoodsController {
      * 查看单个商品
      */
     @GetMapping("/read/{id}")
-    public ApiResult<GoodsVO> readGoods(@PathVariable("id") Integer id,
-                                        @RequestHeader(value = "token", required = false) String token) {
+    public ApiResult<GoodsVO> readGoods(@PathVariable("id") Integer id) {
         GoodsVO vo = goodsService.getGoodsById(id);
         return ApiResult.ok(vo);
     }
@@ -140,8 +137,7 @@ public class GoodsController {
      */
     @PostMapping("/banners/{id}")
     public ApiResult<List<GoodsBanner>> setGoodsBanners(@PathVariable("id") Integer goodsId,
-                                                        @RequestBody BannerDTO dto,
-                                                        @RequestHeader(value = "token", required = false) String token) {
+                                                        @RequestBody BannerDTO dto) {
         List<GoodsBanner> result = goodsService.setGoodsBanners(goodsId, dto.getBanners());
         return ApiResult.ok(result);
     }
@@ -152,8 +148,7 @@ public class GoodsController {
     @PostMapping("/updateContent/{id}")
     public ApiResult<Void> updateGoodsContent(
             @PathVariable Integer id,
-            @RequestBody GoodsContentDTO dto,
-            @RequestHeader(value = "token", required = false) String token) {
+            @RequestBody GoodsContentDTO dto) {
 
         goodsService.updateContent(id, dto.getContent());
 

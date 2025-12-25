@@ -26,15 +26,14 @@ public class NoticeController {
      * 添加公告
      */
     @PostMapping
-    public ApiResult<Notice> createNotice(@RequestHeader("token") String token,
-                                          @RequestBody NoticeDTO dto) {
+    public ApiResult<Notice> createNotice(@RequestBody NoticeDTO dto) {
 
         Notice notice = noticeService.addNotice(dto.getTitle(), dto.getContent());
         return ApiResult.ok(notice);
     }
 
     /**
-     * 查询公告
+     * 公告列表
      */
     @GetMapping("/{page}")
     public ApiResult<Map<String, Object>> list(@PathVariable int page,

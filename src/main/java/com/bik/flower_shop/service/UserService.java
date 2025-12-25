@@ -71,20 +71,21 @@ public class UserService {
     /**
      * 用户登录
      */
-    public String login(String username, String password) {
+    public Map<String, String> loginAndGetTokens(String username, String password) {
         User user = userMapper.selectOne(new QueryWrapper<User>().eq("username", username));
         if (user == null || !PasswordUtil.verify(password, user.getPassword())) {
             throw new BusinessException("用户名或密码错误");
         }
-        return tokenService.createToken(user, "user");
+        return tokenService.createTokenPair(user, "user");
     }
 
-    public void logout(String token) {
-        //通过 token 拿到当前用户
-        User user = tokenService.getUserByToken(token);
+    public void logout(String accessToken, String refreshToken) {
+        // 通过 accessToken 拿到当前用户
+        User user = tokenService.getUserByAccessToken(accessToken);
         if (user == null) {
             return; // token 已失效，直接返回（幂等）
         }
+
         //记录最后在线时间
         User update = new User();
         update.setId(user.getId());
@@ -92,13 +93,13 @@ public class UserService {
 
         userMapper.updateById(update);
         // 删除 Redis token
-        tokenService.invalidateToken(token, "user");
+        tokenService.invalidateAll(accessToken, refreshToken, "user");
     }
 
     /**
      * 用户注册
      */
-    public String register(RegisterDTO dto) {
+    public Map<String, String> register(RegisterDTO dto) {
         if (dto.getUsername() == null || dto.getUsername().trim().isEmpty() ||
                 dto.getPassword() == null || dto.getPassword().isEmpty()) {
             throw new BusinessException("用户名或密码不能为空");
@@ -134,7 +135,7 @@ public class UserService {
 
         userMapper.insert(user);
 
-        return tokenService.createToken(user, "user");
+        return tokenService.createTokenPair(user, "user");
     }
 
     public void updateUserInfo(Integer userId, UpdateUserDTO dto) {
