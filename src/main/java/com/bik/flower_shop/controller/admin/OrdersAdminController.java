@@ -107,4 +107,14 @@ public class OrdersAdminController {
         return ApiResult.ok();
     }
 
+
+    /**
+     * 拒绝用户退货退款
+     */
+    @PostMapping("/refund/return/reject")
+    public ApiResult<Void> rejectReturn(@RequestBody RejectReturnRequest request) {
+        ordersAdminService.rejectReturn(request.getOrderId(), request.getReason());
+        return ApiResult.ok();
+    }
+
 }

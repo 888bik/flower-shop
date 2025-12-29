@@ -28,7 +28,7 @@ public class TokenService {
     /**
      * accessToken 有效期：30 分钟
      */
-    private static final long ACCESS_TOKEN_TTL = 30 * 60;
+    private static final long ACCESS_TOKEN_TTL = 60 * 60 * 3;
 
     /**
      * refreshToken 有效期：7 天
@@ -85,7 +85,6 @@ public class TokenService {
     }
 
     //accessToken 校验
-
     public <T> T getByAccessToken(String token, String role, Class<T> clazz) {
         if (token == null || token.isBlank()) {
             return null;
@@ -102,8 +101,6 @@ public class TokenService {
             return null;
         }
     }
-
-    //refreshToken 换新 token
 
     /**
      * refreshToken → 新 accessToken + refreshToken（旋转）

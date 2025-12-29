@@ -69,6 +69,12 @@ public class OrdersUserService {
                 throw new IllegalArgumentException("商品不存在：" + it.getGoodsId());
             }
 
+            // 扣库存（防超卖）
+            int rows = goodsMapper.decreaseStock(it.getGoodsId(), it.getNum());
+            if (rows == 0) {
+                throw new IllegalArgumentException("库存不足：" + it.getGoodsId());
+            }
+
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(it.getNum()));
             subtotal = subtotal.add(lineTotal);
 
@@ -264,6 +270,12 @@ public class OrdersUserService {
         if (orders.getPaidTime() != null && orders.getPaidTime() > 0) {
             throw new IllegalStateException("已支付订单不能取消");
         }
+        // 回滚库存
+        List<OrderItem> items = orderItemMapper.selectByOrderId(orderId);
+        for (OrderItem item : items) {
+            goodsMapper.increaseStock(item.getGoodsId(), item.getNum());
+        }
+        // 关闭订单
         orders.setClosed(true);
         orders.setUpdateTime((int) Instant.now().getEpochSecond());
         ordersMapper.updateById(orders);

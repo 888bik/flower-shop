@@ -2,7 +2,12 @@ package com.bik.flower_shop.task;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bik.flower_shop.enumeration.PayStatusEnum;
+import com.bik.flower_shop.mapper.CouponUserMapper;
+import com.bik.flower_shop.mapper.GoodsMapper;
+import com.bik.flower_shop.mapper.OrderItemMapper;
 import com.bik.flower_shop.mapper.OrdersMapper;
+import com.bik.flower_shop.pojo.entity.CouponUser;
+import com.bik.flower_shop.pojo.entity.OrderItem;
 import com.bik.flower_shop.pojo.entity.Orders;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,6 +24,10 @@ import java.util.List;
 public class OrderAutoCloseTask {
 
     private final OrdersMapper ordersMapper;
+    private final OrderItemMapper orderItemMapper;
+    private final GoodsMapper goodsMapper;
+    private final CouponUserMapper couponUserMapper;
+
 
     /**
      * 每分钟执行一次，关闭超时未支付订单
@@ -37,9 +46,30 @@ public class OrderAutoCloseTask {
         );
 
         for (Orders order : orders) {
+
+            // 回滚库存
+            List<OrderItem> items = orderItemMapper.selectByOrderId(order.getId());
+            for (OrderItem item : items) {
+                goodsMapper.increaseStock(item.getGoodsId(), item.getNum());
+            }
             order.setClosed(true);
             order.setUpdateTime(now);
             ordersMapper.updateById(order);
+
+            // 恢复优惠券
+            if (order.getCouponUserId() != null) {
+                CouponUser cu = couponUserMapper.selectById(order.getCouponUserId());
+                if (cu != null && cu.getUsed() != null && cu.getUsed() == 1) {
+                    cu.setUsed((byte) 0);
+                    couponUserMapper.updateById(cu);
+                }
+            }
+
+            // 关闭订单（幂等）
+            order.setClosed(true);
+            order.setUpdateTime(now);
+            ordersMapper.updateById(order);
+
         }
     }
 }

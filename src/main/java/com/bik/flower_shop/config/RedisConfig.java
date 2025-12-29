@@ -13,7 +13,6 @@ public class RedisConfig {
 
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
-        // 如果需要自定义 host/port，可用 new LettuceConnectionFactory(host, port)
         return new LettuceConnectionFactory();
     }
 

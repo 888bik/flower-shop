@@ -8,6 +8,9 @@ import lombok.Data;
 
 import java.util.List;
 
+/**
+ * @author bik
+ */
 @TableName("home_floor")
 @Data
 public class HomeFloor {

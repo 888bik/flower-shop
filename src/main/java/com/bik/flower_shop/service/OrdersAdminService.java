@@ -1,7 +1,7 @@
 package com.bik.flower_shop.service;
 
-import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bik.flower_shop.enumeration.PayStatusEnum;
 import com.bik.flower_shop.enumeration.RefundStatusEnum;
@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 /**
  * @author bik
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class OrdersAdminService {
@@ -361,6 +363,13 @@ public class OrdersAdminService {
                 if (!"pending".equalsIgnoreCase(order.getShipStatus())) {
                     throw new IllegalStateException("已发货订单不能仅退款");
                 }
+                // 回滚库存
+                List<OrderItem> items = orderItemMapper.selectList(
+                        new LambdaQueryWrapper<OrderItem>().eq(OrderItem::getOrderId, orderId)
+                );
+                for (OrderItem item : items) {
+                    goodsMapper.increaseStock(item.getGoodsId(), item.getNum());
+                }
                 order.setRefundStatus(RefundStatusEnum.COMPLETED.getCode());
                 order.setPayStatus(PayStatusEnum.REFUNDED.getCode());
                 order.setRefundNo("REF" + System.currentTimeMillis());
@@ -388,33 +397,60 @@ public class OrdersAdminService {
     }
 
 
-
     @Transactional
     public void confirmRefund(Integer orderId) {
-        Orders order = ordersMapper.selectById(orderId);
-        if (order == null) {
-            throw new IllegalArgumentException("订单不存在");
-        }
+        int now = (int) (System.currentTimeMillis() / 1000);
 
-        RefundStatusEnum cur = RefundStatusEnum.of(order.getRefundStatus());
-        if (cur != RefundStatusEnum.RETURNING) {
-            throw new IllegalStateException("当前订单未寄回商品，不能确认退款");
-        }
-
-        order.setRefundStatus(RefundStatusEnum.COMPLETED.getCode());
-        order.setPayStatus(PayStatusEnum.REFUNDED.getCode());
-        order.setRefundNo("REF" + System.currentTimeMillis());
-        order.setClosed(true);
-
-        Map<String, Object> log = new HashMap<>();
-        log.put("confirmTime", System.currentTimeMillis() / 1000);
-
-        order.setExtra(
-                jsonExtraUtil.put(order.getExtra(), "refund_confirm", log)
+        // 原子更新订单状态（防并发）
+        int rows = ordersMapper.update(
+                null,
+                new LambdaUpdateWrapper<Orders>()
+                        .eq(Orders::getId, orderId)
+                        .eq(Orders::getRefundStatus, RefundStatusEnum.RETURNING.getCode())
+                        .set(Orders::getRefundStatus, RefundStatusEnum.COMPLETED.getCode())
+                        .set(Orders::getPayStatus, PayStatusEnum.REFUNDED.getCode())
+                        .set(Orders::getClosed, true)
+                        .set(Orders::getUpdateTime, now)
         );
 
-        order.setUpdateTime((int) (System.currentTimeMillis() / 1000));
-        ordersMapper.updateById(order);
+        if (rows == 0) {
+            throw new IllegalStateException("订单状态异常或已处理退款");
+        }
+
+        // 查询订单项
+        List<OrderItem> items = orderItemMapper.selectList(
+                new LambdaQueryWrapper<OrderItem>()
+                        .eq(OrderItem::getOrderId, orderId)
+        );
+
+        // 回滚库存（只会执行一次）
+        for (OrderItem item : items) {
+            int r = goodsMapper.increaseStock(item.getGoodsId(), item.getNum());
+            if (r == 0) {
+                throw new IllegalStateException("库存回滚失败");
+            }
+        }
+
+        // 记录日志
+        try {
+            Orders order = ordersMapper.selectById(orderId);
+
+            Map<String, Object> log = new HashMap<>();
+            log.put("confirmTime", now);
+
+            String extra = order.getExtra();
+            if (extra == null) {
+                extra = "{}";
+            }
+
+            order.setExtra(
+                    jsonExtraUtil.put(extra, "refund_confirm", log)
+            );
+
+            ordersMapper.updateById(order);
+        } catch (Exception e) {
+            log.error("退款确认日志写入失败，orderId={}", orderId, e);
+        }
     }
 
     public void exportOrders() {
@@ -425,4 +461,48 @@ public class OrdersAdminService {
     public Orders getOrderById(Long orderId) {
         return ordersMapper.selectById(orderId);
     }
+
+
+    @Transactional
+    public void rejectReturn(Integer orderId, String reason) {
+        int now = (int) (System.currentTimeMillis() / 1000);
+
+        // 原子更新订单状态：只允许拒绝用户申请退货
+        int rows = ordersMapper.update(
+                null,
+                new LambdaUpdateWrapper<Orders>()
+                        .eq(Orders::getId, orderId)
+                        .eq(Orders::getRefundStatus, RefundStatusEnum.RETURNING.getCode()) // 允许拒绝已寄回订单
+                        .set(Orders::getRefundStatus, RefundStatusEnum.REJECTED.getCode())
+                        .set(Orders::getUpdateTime, now)
+        );
+
+
+        if (rows == 0) {
+            throw new IllegalStateException("订单状态异常或不允许拒绝退货");
+        }
+
+        // 查询订单
+        Orders order = ordersMapper.selectById(orderId);
+        if (order == null) {
+            throw new IllegalArgumentException("订单不存在");
+        }
+
+        // 写入拒绝日志
+        Map<String, Object> logger = new HashMap<>();
+        logger.put("rejectTime", now);
+        logger.put("reason", reason);
+
+        try {
+            String extra = order.getExtra();
+            if (extra == null) {
+                extra = "{}";
+            }
+            order.setExtra(jsonExtraUtil.put(extra, "return_reject", logger));
+            ordersMapper.updateById(order);
+        } catch (Exception e) {
+            log.error("拒绝退货日志写入失败，orderId={}", orderId, e);
+        }
+    }
+
 }

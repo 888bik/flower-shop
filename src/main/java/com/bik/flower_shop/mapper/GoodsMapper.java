@@ -96,4 +96,22 @@ public interface GoodsMapper extends BaseMapper<Goods> {
     );
 
 
+    @Update("""
+            UPDATE goods
+            SET stock = stock - #{num}
+            WHERE id = #{id}
+            AND stock >= #{num}
+            """)
+    int decreaseStock(@Param("id") Integer id,
+                      @Param("num") Integer num);
+
+
+    @Update("""
+            UPDATE goods
+            SET stock = stock + #{num}
+            WHERE id = #{id}
+            """)
+    int increaseStock(@Param("id") Integer id, @Param("num") Integer num);
+
+
 }
